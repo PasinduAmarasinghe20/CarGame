@@ -1,0 +1,2652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
+<title>Lowpoly Valley Off-Road</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{width:100%;height:100%;overflow:hidden;background:#0b1016;color:#e8eef5;
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;user-select:none}
+  #game{position:fixed;inset:0}
+  canvas{display:block}
+
+  /* HUD */
+  #hud{position:fixed;inset:0;pointer-events:none;z-index:20;opacity:0;transition:.3s}
+  #hud.show{opacity:1}
+  .panel{position:absolute;background:rgba(10,16,22,.55);backdrop-filter:blur(8px);
+    border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:10px 14px}
+  #speedo{right:16px;top:16px;text-align:right;min-width:140px}
+  #speedo .kmh{font-size:34px;font-weight:800;letter-spacing:-1px;line-height:1}
+  #speedo .unit{font-size:11px;opacity:.65;letter-spacing:2px}
+  #speedo .vname{font-size:11px;opacity:.7;margin-top:6px;letter-spacing:1px;text-transform:uppercase}
+  #speedo .bname{font-size:10px;opacity:.5;margin-top:2px;letter-spacing:1px;text-transform:uppercase}
+  #topbar{left:16px;top:16px;display:flex;gap:8px;pointer-events:auto;flex-wrap:wrap;max-width:60%}
+  .btn{pointer-events:auto;cursor:pointer;background:rgba(10,16,22,.55);backdrop-filter:blur(8px);
+    border:1px solid rgba(255,255,255,.14);border-radius:10px;color:#e8eef5;font-size:12px;
+    padding:9px 12px;font-weight:600;letter-spacing:.5px;transition:.15s;white-space:nowrap}
+  .btn:hover{background:rgba(90,208,106,.22);border-color:rgba(90,208,106,.5)}
+  .btn:active{transform:scale(.96)}
+  .btn.muted{opacity:.55}
+  .btn.on{background:rgba(90,208,106,.3);border-color:rgba(90,208,106,.7)}
+  #help{left:16px;bottom:16px;font-size:11px;line-height:1.6;opacity:.72;max-width:280px}
+  #timeHUD{left:16px;top:80px;font-size:11px;opacity:.65;letter-spacing:1px}
+
+  /* Menu */
+  #menu{position:fixed;inset:0;z-index:60;overflow-y:auto;
+    background:radial-gradient(circle at 50% 25%,rgba(22,36,50,.9) 0%,rgba(6,10,15,.97) 72%);
+    backdrop-filter:blur(4px);transition:.4s}
+  #menu.hidden{opacity:0;pointer-events:none}
+  .menu-inner{max-width:1020px;margin:0 auto;padding:28px 18px 48px}
+  h1{font-size:clamp(26px,5.4vw,42px);font-weight:800;letter-spacing:-1.4px;line-height:1.05;text-align:center}
+  h1 span{color:#5ad06a}
+  .sub{margin-top:8px;font-size:13px;opacity:.66;line-height:1.5;text-align:center}
+  .section{margin-top:22px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);
+    border-radius:14px;padding:14px}
+  .section h2{font-size:11px;letter-spacing:2.4px;text-transform:uppercase;opacity:.55;
+    margin-bottom:10px;font-weight:800}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:10px}
+  .card{background:rgba(255,255,255,.055);border:2px solid rgba(255,255,255,.09);border-radius:12px;
+    padding:8px;cursor:pointer;transition:.16s;position:relative}
+  .card:hover{background:rgba(255,255,255,.1);transform:translateY(-2px)}
+  .card.sel{border-color:#5ad06a;background:rgba(90,208,106,.13);
+    box-shadow:0 0 0 3px rgba(90,208,106,.18)}
+  .card img{width:100%;height:auto;display:block;border-radius:7px;margin-bottom:6px;background:transparent}
+  .card h3{font-size:12px;font-weight:700;letter-spacing:.2px;line-height:1.2}
+  .card p{font-size:10px;opacity:.55;margin-top:3px;line-height:1.3;min-height:24px}
+  .card .badge{position:absolute;top:5px;right:5px;font-size:8.5px;font-weight:800;letter-spacing:.8px;
+    background:rgba(90,208,106,.9);color:#06110a;padding:2px 5px;border-radius:5px}
+  .card .swatch{height:44px;border-radius:7px;margin-bottom:6px;
+    background:linear-gradient(135deg,var(--c1),var(--c2))}
+  .stat{display:flex;align-items:center;gap:5px;margin-top:4px;font-size:8.5px;letter-spacing:.6px;opacity:.8}
+  .stat span{width:34px;opacity:.7}
+  .bar{flex:1;height:3px;border-radius:2px;background:rgba(255,255,255,.13);overflow:hidden}
+  .bar i{display:block;height:100%;background:linear-gradient(90deg,#5ad06a,#a9e86b);border-radius:2px}
+  .tools{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+  .tools .btn{font-size:11px;padding:8px 12px}
+
+  /* Settings row */
+  .setting-row{display:flex;align-items:center;gap:8px;margin:8px 0;flex-wrap:wrap}
+  .setting-row > label{font-size:11px;letter-spacing:1.4px;text-transform:uppercase;
+    opacity:.65;font-weight:700;min-width:80px}
+  .seg{display:flex;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);
+    border-radius:8px;padding:2px;gap:2px}
+  .seg button{background:transparent;border:none;color:#e8eef5;font-size:11px;font-weight:700;
+    padding:6px 12px;border-radius:6px;cursor:pointer;letter-spacing:.5px;transition:.14s;opacity:.65}
+  .seg button:hover{opacity:1}
+  .seg button.on{background:rgba(90,208,106,.85);color:#06110a;opacity:1}
+
+  #startBtn{display:block;width:100%;margin-top:20px;padding:16px;font-size:15px;font-weight:800;
+    letter-spacing:2.4px;border:none;border-radius:13px;cursor:pointer;color:#06110a;
+    background:linear-gradient(180deg,#7ee88c,#3fbb52);
+    box-shadow:0 12px 30px -10px rgba(90,208,106,.75);transition:.16s}
+  #startBtn:hover{transform:translateY(-2px);box-shadow:0 18px 36px -10px rgba(90,208,106,.9)}
+  #startBtn:active{transform:scale(.97)}
+  .hint{margin-top:14px;font-size:11px;opacity:.45;line-height:1.6;text-align:center}
+
+  /* Modal */
+  .modal{position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;
+    background:rgba(4,8,12,.85);backdrop-filter:blur(6px);padding:16px}
+  .modal.hidden{display:none}
+  .modal-inner{width:min(760px,96vw);max-height:90vh;overflow-y:auto;
+    background:#121922;border:1px solid rgba(255,255,255,.14);border-radius:16px;padding:22px}
+  .modal-inner h2{font-size:18px;font-weight:800;letter-spacing:-.2px}
+  .modal-inner .modal-sub{font-size:12px;opacity:.62;margin-top:6px;line-height:1.55}
+  .modal-inner code{background:rgba(255,255,255,.09);padding:1px 5px;border-radius:4px;
+    font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px}
+  .modal-inner label{display:block;font-size:10.5px;letter-spacing:1.2px;text-transform:uppercase;
+    opacity:.7;margin:14px 0 6px;font-weight:700}
+  .modal-inner textarea{width:100%;background:#0a0f15;color:#d6e2ee;
+    border:1px solid rgba(255,255,255,.14);border-radius:10px;padding:10px;
+    font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;line-height:1.55;resize:vertical}
+  .modal-inner textarea:focus{outline:none;border-color:rgba(90,208,106,.55)}
+  #builderInput,#heightInput{min-height:110px}
+  #vehicleInput,#configInput{min-height:170px}
+  #mapStatus,#vStatus{margin-top:12px;font-size:12px;min-height:18px;line-height:1.5}
+  #mapStatus.ok,#vStatus.ok{color:#7ee88c}
+  #mapStatus.err,#vStatus.err{color:#ff8f7a;white-space:pre-wrap}
+  .modal-actions{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;align-items:center}
+  .modal-actions .primary{background:linear-gradient(180deg,#7ee88c,#3fbb52);color:#06110a;
+    border:none;padding:12px 30px;font-weight:800;letter-spacing:1.4px;border-radius:10px;
+    cursor:pointer;font-size:13px}
+  .modal-actions .ghost{background:transparent;color:#d6e2ee;border:1px solid rgba(255,255,255,.2);
+    padding:12px 20px;border-radius:10px;cursor:pointer;font-weight:600;font-size:12px}
+  .modal-actions .spacer{flex:1}
+
+  /* Photo mode overlay */
+  #photoOverlay{position:fixed;inset:0;z-index:70;pointer-events:none;display:none}
+  body.photo-mode #photoOverlay{display:block}
+  body.photo-mode #hud,body.photo-mode #touch{display:none!important}
+  #photoBar{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);
+    display:flex;gap:8px;pointer-events:auto;background:rgba(10,16,22,.75);
+    padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.15)}
+  #photoBar .btn{font-size:12px;padding:10px 16px}
+  #photoHint{position:absolute;top:20px;left:50%;transform:translateX(-50%);
+    font-size:11px;letter-spacing:1px;opacity:.8;background:rgba(10,16,22,.7);
+    padding:8px 16px;border-radius:8px}
+
+  /* Touch */
+  #touch{position:fixed;inset:0;z-index:30;display:none;pointer-events:none}
+  #touch.show{display:block}
+  #stick{position:absolute;left:22px;bottom:26px;width:128px;height:128px;border-radius:50%;
+    background:rgba(255,255,255,.07);border:2px solid rgba(255,255,255,.16);
+    pointer-events:auto;touch-action:none}
+  #knob{position:absolute;left:50%;top:50%;width:56px;height:56px;border-radius:50%;
+    transform:translate(-50%,-50%);background:rgba(255,255,255,.28);
+    border:2px solid rgba(255,255,255,.4);transition:transform .04s linear}
+  #pedals{position:absolute;right:22px;bottom:26px;display:flex;flex-direction:column;gap:12px;
+    pointer-events:auto}
+  .pedal{width:86px;height:86px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    font-size:24px;font-weight:800;color:#fff;touch-action:none;
+    background:rgba(255,255,255,.1);border:2px solid rgba(255,255,255,.22);transition:.08s}
+  .pedal.on{background:rgba(90,208,106,.45);border-color:rgba(90,208,106,.85);transform:scale(.94)}
+  #btnBrake{width:74px;height:74px;font-size:18px;margin-left:12px}
+  #btnBrake.on{background:rgba(230,90,80,.45);border-color:rgba(230,90,80,.85)}
+  @media (max-width:520px){ #help{display:none} .cards{grid-template-columns:repeat(auto-fit,minmax(130px,1fr))} }
+</style>
+</head>
+<body>
+<div id="game"></div>
+
+<div id="hud">
+  <div id="topbar">
+    <button class="btn" id="resetBtn">⟲ RESET</button>
+    <button class="btn" id="menuBtn">☰ GARAGE</button>
+    <button class="btn" id="photoBtn">📷 PHOTO</button>
+    <button class="btn" id="muteBtn">🔊 SOUND</button>
+    <button class="btn" id="weatherBtn">☀ CLEAR</button>
+    <button class="btn" id="timeBtn">⏱ AUTO</button>
+  </div>
+  <div id="timeHUD"></div>
+  <div id="speedo" class="panel">
+    <div class="kmh" id="kmh">0</div>
+    <div class="unit">KM/H</div>
+    <div class="vname" id="vname">—</div>
+    <div class="bname" id="bname">—</div>
+  </div>
+  <div id="help" class="panel">
+    <b>WASD / Arrows</b> — drive<br>
+    <b>Space</b> — handbrake<br>
+    <b>P</b> — photo · <b>N</b> — night · <b>R</b> — reset · <b>M</b> — mute
+  </div>
+</div>
+
+<div id="touch">
+  <div id="stick"><div id="knob"></div></div>
+  <div id="pedals">
+    <div class="pedal" id="btnGas">▲</div>
+    <div class="pedal" id="btnBrake">▼</div>
+  </div>
+</div>
+
+<div id="photoOverlay">
+  <div id="photoHint">Drag to orbit · Wheel to zoom · ESC to exit</div>
+  <div id="photoBar">
+    <button class="btn" id="photoShot">📸 SAVE</button>
+    <button class="btn" id="photoExit">✕ EXIT</button>
+  </div>
+</div>
+
+<div id="menu">
+  <div class="menu-inner">
+    <h1>LOWPOLY <span>VALLEY</span></h1>
+    <p class="sub">Pick your rig and explore the bright green hills, winding rivers, and low-poly mountains.</p>
+
+    <div class="section">
+      <h2>Map</h2>
+      <div class="cards" id="mapCards"></div>
+      <div class="tools">
+        <button class="btn" id="importMapBtn">⬇ IMPORT MAP</button>
+        <button class="btn" id="clearMapsBtn">🗑 CLEAR CUSTOM MAPS</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Vehicle</h2>
+      <div class="cards" id="vehicleCards"></div>
+      <div class="tools">
+        <button class="btn" id="importVehicleBtn">⬇ IMPORT VEHICLE</button>
+        <button class="btn" id="clearVehiclesBtn">🗑 CLEAR CUSTOM VEHICLES</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Settings</h2>
+      <div class="setting-row">
+        <label>Quality</label>
+        <div class="seg" id="qualitySeg">
+          <button data-q="low">Low</button>
+          <button data-q="medium">Medium</button>
+          <button data-q="high" class="on">High</button>
+        </div>
+      </div>
+      <div class="setting-row">
+        <label>Weather</label>
+        <div class="seg" id="weatherSeg">
+          <button data-w="clear" class="on">Clear</button>
+          <button data-w="rain">Rain</button>
+          <button data-w="snow">Snow</button>
+          <button data-w="fog">Fog</button>
+        </div>
+      </div>
+      <div class="setting-row">
+        <label>Time</label>
+        <div class="seg" id="timeSeg">
+          <button data-t="dawn">Dawn</button>
+          <button data-t="noon" class="on">Noon</button>
+          <button data-t="dusk">Dusk</button>
+          <button data-t="night">Night</button>
+          <button data-t="auto">Auto</button>
+        </div>
+      </div>
+    </div>
+
+    <button id="startBtn">START ENGINE</button>
+    <p class="hint">WASD / Arrows drive · Space handbrake · P photo mode · M mute</p>
+  </div>
+</div>
+
+<!-- Vehicle Import Modal -->
+<div id="vehicleImportModal" class="modal hidden">
+  <div class="modal-inner">
+    <h2>Import Vehicle</h2>
+    <p class="modal-sub">Paste a builder function and a vehicle object. Builder receives <code>g</code>, <code>paint</code>, <code>box</code>, <code>MAT</code>, <code>THREE</code>.</p>
+    <label>Builder code</label>
+    <textarea id="builderInput" spellcheck="false" placeholder="function myCar(g, paint) { g.add(box(1.9,0.55,3.6,paint,0,0.95,0)); }"></textarea>
+    <label>Vehicle object</label>
+    <textarea id="vehicleInput" spellcheck="false" placeholder="{ id:'mycar', name:'My Car', color:0x00d4ff, wheelRadius:0.55, wheelWidth:0.45, wheelBase:2.7, track:1.8, maxSpeed:36, accel:18, brake:30, revMax:12, grip:7.0, steerMax:0.6, bars:{Speed:0.75,Accel:0.7,Grip:0.65,Handling:0.7} }"></textarea>
+    <div id="vStatus"></div>
+    <div class="modal-actions">
+      <button class="primary" id="vImportBtn">IMPORT</button>
+      <button class="ghost" id="vExampleBtn">📋 EXAMPLE</button>
+      <div class="spacer"></div>
+      <button class="ghost" id="vCancelBtn">CANCEL</button>
+    </div>
+  </div>
+</div>
+
+<!-- Map Import Modal -->
+<div id="mapImportModal" class="modal hidden">
+  <div class="modal-inner">
+    <h2>Import Map</h2>
+    <p class="modal-sub">Paste a height function and a biome config. Height fn receives <code>fbm</code>, <code>vnoise</code>, <code>hash2</code>. Forward is +Z.</p>
+    <label>Height function</label>
+    <textarea id="heightInput" spellcheck="false" placeholder="function heightAt(x, z) {
+  let h = (fbm(x*0.0017, z*0.0017, 4) - 0.5) * 90;
+  h += (fbm(x*0.0062, z*0.0062, 3) - 0.5) * 20;
+  return h;
+}"></textarea>
+    <label>Biome config</label>
+    <textarea id="configInput" spellcheck="false" placeholder="{
+  id:'mymap', name:'My Map',
+  colors:{ grassA:0x4a7032, grassB:0x6f9a46, dry:0x8d9450, rock:0x77736b, dark:0x2f4a24 },
+  sky:{ top:0x2f74b8, bottom:0xd3e6f4 },
+  fog:{ color:0xa9c6dd, near:260, far:1150 },
+  sun:{ color:0xfff0cf, intensity:2.4 },
+  hemi:{ sky:0xc8e2f7, ground:0x49582f, intensity:1.0 },
+  water:0x2f7fae, roadColor:'#8b7355',
+  treeCount:2200,
+  mesa:{ x:300, z:-300, r0:110, r1:152 },
+  wfAngles:[0.55, 2.3, 3.9, 5.35]
+}"></textarea>
+    <div id="mapStatus"></div>
+    <div class="modal-actions">
+      <button class="primary" id="mapImportBtn">IMPORT</button>
+      <button class="ghost" id="mapExampleBtn">📋 EXAMPLE</button>
+      <div class="spacer"></div>
+      <button class="ghost" id="mapCancelBtn">CANCEL</button>
+    </div>
+  </div>
+</div>
+
+<script type="importmap">
+{ "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+/* =========================================================
+   NOISE
+   ========================================================= */
+const SIZE = 1600, HALF = SIZE / 2, SEG = 256;
+const rnd = (a, b) => a + Math.random() * (b - a);
+
+function hash2(x, y) {
+  let n = Math.imul(x | 0, 374761393) + Math.imul(y | 0, 668265263);
+  n = Math.imul(n ^ (n >>> 13), 1274126177);
+  return ((n ^ (n >>> 16)) >>> 0) / 4294967295;
+}
+function vnoise(x, y) {
+  const xi = Math.floor(x), yi = Math.floor(y);
+  const xf = x - xi, yf = y - yi;
+  const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
+  const a = hash2(xi, yi), b = hash2(xi + 1, yi);
+  const c = hash2(xi, yi + 1), d = hash2(xi + 1, yi + 1);
+  return (a * (1 - u) + b * u) * (1 - v) + (c * (1 - u) + d * u) * v;
+}
+function fbm(x, y, oct) {
+  let s = 0, amp = 0.5, f = 1, norm = 0;
+  for (let i = 0; i < oct; i++) { s += vnoise(x * f, y * f) * amp; norm += amp; amp *= 0.5; f *= 2; }
+  return s / norm;
+}
+function makeSeededRandom(seed) {
+  let s = seed >>> 0;
+  return () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; };
+}
+
+/* =========================================================
+   BIOMES
+   ========================================================= */
+const BIOMES = {};
+
+// Custom Lowpoly Valley Map
+registerBiome('lowpoly_valley', {
+  id: 'lowpoly_valley',
+  name: 'Lowpoly Valley',
+  baseHeight: function(x, z) {
+    let h = (fbm(x * 0.0015 + 13.7, z * 0.0015 + 91.3, 4) - 0.5) * 40;
+    h += (fbm(x * 0.006 + 51.1, z * 0.006 + 27.9, 3) - 0.5) * 10;
+    
+    // Mountains around the edges
+    const edgeFactor = Math.max(0, (Math.abs(x) + Math.abs(z) - 400) / 400);
+    if (edgeFactor > 0) {
+      const mountain = Math.abs(fbm(x * 0.003 + 11, z * 0.003 + 22, 4) - 0.5) * 400;
+      h += mountain * Math.min(1, edgeFactor) * Math.min(1, edgeFactor);
+    }
+    
+    // Winding river trench
+    const riverPathX = Math.sin(z * 0.005) * 200 + Math.cos(z * 0.002) * 100;
+    const distToRiver = Math.abs(x - riverPathX);
+    if (distToRiver < 50) {
+      const t = distToRiver / 50;
+      h -= 25 * (1 - t * t); // Smooth V-shape
+    }
+    
+    return h;
+  },
+  colors: { grassA: 0x5cb83e, grassB: 0x3e9928, dry: 0x8aa63a, rock: 0x9d8b7a, dark: 0x2a5a3a },
+  sky: { top: 0x4a90e2, bottom: 0x87ceeb },
+  fog: { color: 0x87ceeb, near: 300, far: 1200 },
+  sun: { color: 0xffffff, intensity: 2.5 },
+  hemi: { sky: 0x4a90e2, ground: 0x3e9928, intensity: 0.8 },
+  water: 0x1e90ff,
+  roadColor: '#8b7355',
+  treeCount: 2500,
+  mesa: null,
+  wfAngles: [],
+  treeStyle: 'lowpoly',
+  spawn: { x: -150, z: -150 }
+});
+
+// Standard maps from previous version
+function defaultHeight(x, z) {
+  let h = (fbm(x * 0.0017 + 13.7, z * 0.0017 + 91.3, 4) - 0.5) * 92;
+  h += (fbm(x * 0.0062 + 51.1, z * 0.0062 + 27.9, 3) - 0.5) * 24;
+  h += (fbm(x * 0.0310 + 3.3, z * 0.0310 + 77.1, 2) - 0.5) * 3.0;
+  return h;
+}
+function desertHeight(x, z) {
+  let h = (fbm(x * 0.0012 + 13.7, z * 0.0012 + 91.3, 4) - 0.5) * 55;
+  h += (fbm(x * 0.0055 + 51.1, z * 0.0055 + 27.9, 3) - 0.5) * 35;
+  h += Math.abs(fbm(x * 0.008 + 3.3, z * 0.008 + 77.1, 2) - 0.5) * 25;
+  return h;
+}
+function snowHeight(x, z) {
+  let h = (fbm(x * 0.0015 + 13.7, z * 0.0015 + 91.3, 4) - 0.5) * 110;
+  h += (fbm(x * 0.006 + 51.1, z * 0.006 + 27.9, 3) - 0.5) * 30;
+  h += (fbm(x * 0.03 + 3.3, z * 0.03 + 77.1, 2) - 0.5) * 4;
+  return h;
+}
+function jungleHeight(x, z) {
+  let h = (fbm(x * 0.002 + 13.7, z * 0.002 + 91.3, 4) - 0.5) * 70;
+  h += (fbm(x * 0.008 + 51.1, z * 0.008 + 27.9, 3) - 0.5) * 18;
+  h += (fbm(x * 0.025 + 3.3, z * 0.025 + 77.1, 2) - 0.5) * 3;
+  return h;
+}
+
+function registerBiome(key, cfg) { BIOMES[key] = cfg; }
+
+registerBiome('countryside', {
+  id: 'countryside', name: 'Countryside', baseHeight: defaultHeight,
+  colors: { grassA: 0x4a7032, grassB: 0x6f9a46, dry: 0x8d9450, rock: 0x77736b, dark: 0x2f4a24 },
+  sky: { top: 0x2f74b8, bottom: 0xd3e6f4 }, fog: { color: 0xa9c6dd, near: 260, far: 1150 },
+  sun: { color: 0xfff0cf, intensity: 2.4 }, hemi: { sky: 0xc8e2f7, ground: 0x49582f, intensity: 1.0 },
+  water: 0x2f7fae, roadColor: '#8b7355', treeCount: 3400,
+  mesa: { x: 300, z: -300, r0: 110, r1: 152 }, wfAngles: [0.55, 2.30, 3.90, 5.35], treeStyle: 'mixed'
+});
+registerBiome('desert', {
+  id: 'desert', name: 'Desert Canyon', baseHeight: desertHeight,
+  colors: { grassA: 0xb87a3a, grassB: 0xd9a35c, dry: 0xe0c48a, rock: 0x8b4a2a, dark: 0x6b3a1e },
+  sky: { top: 0xffb066, bottom: 0xffe0b0 }, fog: { color: 0xf0c896, near: 300, far: 1400 },
+  sun: { color: 0xffd8a0, intensity: 2.6 }, hemi: { sky: 0xffd8b0, ground: 0x8b6a3a, intensity: 1.1 },
+  water: 0x4a8098, roadColor: '#a88050', treeCount: 500,
+  mesa: { x: -400, z: 200, r0: 140, r1: 220 }, wfAngles: [1.0, 3.14, 5.5], treeStyle: 'scrub'
+});
+registerBiome('snow', {
+  id: 'snow', name: 'Snow Peaks', baseHeight: snowHeight,
+  colors: { grassA: 0xe8f0f5, grassB: 0xffffff, dry: 0xdfe8ed, rock: 0x889098, dark: 0xc0ccd4 },
+  sky: { top: 0x3a6080, bottom: 0xacc4d8 }, fog: { color: 0xc8d8e0, near: 200, far: 900 },
+  sun: { color: 0xd8e8ff, intensity: 2.0 }, hemi: { sky: 0xc8d8e8, ground: 0x8898a8, intensity: 1.2 },
+  water: 0x5a90b0, roadColor: '#707880', treeCount: 1800,
+  mesa: { x: 200, z: 200, r0: 100, r1: 160 }, wfAngles: [0.5, 2.5, 4.5], treeStyle: 'snowpine'
+});
+registerBiome('jungle', {
+  id: 'jungle', name: 'Jungle', baseHeight: jungleHeight,
+  colors: { grassA: 0x2a4a18, grassB: 0x4a6a28, dry: 0x5a7028, rock: 0x4a4030, dark: 0x1a3a10 },
+  sky: { top: 0x5a8a5a, bottom: 0xa8c8a0 }, fog: { color: 0xa8c8a0, near: 150, far: 800 },
+  sun: { color: 0xd8f0c0, intensity: 2.2 }, hemi: { sky: 0x90b880, ground: 0x1a3a10, intensity: 1.0 },
+  water: 0x2a5a3a, roadColor: '#4a3a20', treeCount: 5000,
+  mesa: { x: -200, z: -400, r0: 100, r1: 180 }, wfAngles: [0.8, 2.8, 4.8, 6.2], treeStyle: 'jungle'
+});
+
+let currentBiomeKey = 'lowpoly_valley';
+let currentBiome = BIOMES.lowpoly_valley;
+
+function refreshBiomeMeta(b) {
+  if (b.mesa) b.mesa._top = b.baseHeight(b.mesa.x, b.mesa.z) + 62;
+}
+refreshBiomeMeta(currentBiome);
+
+function terrainHeight(x, z) {
+  if (!currentBiome) return 0;
+  let h = currentBiome.baseHeight(x, z);
+  const mesa = currentBiome.mesa;
+  if (mesa) {
+    const dx = x - mesa.x, dz = z - mesa.z;
+    const d = Math.sqrt(dx * dx + dz * dz);
+    if (d < mesa.r1) {
+      let m, topH = mesa._top;
+      if (d <= mesa.r0) {
+        m = 1;
+        const t = d / mesa.r0;
+        topH -= 11 * (1 - t * t);
+      } else {
+        const t = (d - mesa.r0) / (mesa.r1 - mesa.r0);
+        m = 1 - t * t * (3 - 2 * t);
+      }
+      h = h * (1 - m) + topH * m;
+    }
+    if (currentBiome.wfAngles && currentBiome.wfAngles.length > 0 && d < mesa.r1 + 16 && d > mesa.r0 * 0.45) {
+      const ang = Math.atan2(dz, dx);
+      let fall = 0;
+      for (const wfa of currentBiome.wfAngles) {
+        let da = ang - wfa;
+        while (da > Math.PI) da -= Math.PI * 2;
+        while (da < -Math.PI) da += Math.PI * 2;
+        const a = 1 - Math.min(1, Math.abs(da) / 0.16);
+        if (a > fall) fall = a;
+      }
+      if (fall > 0) {
+        const rad = Math.min(1, (d - mesa.r0 * 0.45) / (mesa.r0 * 0.5));
+        h -= 4.0 * fall * fall * rad;
+      }
+    }
+  }
+  return h;
+}
+function slopeAt(x, z) {
+  const e = 2;
+  const gx = (terrainHeight(x + e, z) - terrainHeight(x - e, z)) / (2 * e);
+  const gz = (terrainHeight(x, z + e) - terrainHeight(x, z - e)) / (2 * e);
+  return Math.hypot(gx, gz);
+}
+
+/* =========================================================
+   RENDERER / SCENE
+   ========================================================= */
+const container = document.getElementById('game');
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.12;
+container.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(62, innerWidth / innerHeight, 0.4, 4000);
+camera.position.set(0, 120, 200);
+
+const hemi = new THREE.HemisphereLight(0xffffff, 0x444444, 1.0);
+scene.add(hemi);
+
+const sun = new THREE.DirectionalLight(0xffffff, 2.4);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.camera.left = -85; sun.shadow.camera.right = 85;
+sun.shadow.camera.top = 85; sun.shadow.camera.bottom = -85;
+sun.shadow.camera.near = 1; sun.shadow.camera.far = 520;
+sun.shadow.bias = -0.0009; sun.shadow.normalBias = 0.5;
+scene.add(sun, sun.target);
+
+const skyMat = new THREE.ShaderMaterial({
+  side: THREE.BackSide, depthWrite: false, fog: false,
+  uniforms: { top: { value: new THREE.Color(0x4a90e2) }, bottom: { value: new THREE.Color(0x87ceeb) } },
+  vertexShader: `varying vec3 vP; void main(){ vP = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
+  fragmentShader: `varying vec3 vP; uniform vec3 top; uniform vec3 bottom;
+    void main(){ float h = clamp(normalize(vP).y * 0.5 + 0.5, 0.0, 1.0);
+      gl_FragColor = vec4(mix(bottom, top, pow(h, 0.85)), 1.0); }`
+});
+const sky = new THREE.Mesh(new THREE.SphereGeometry(1900, 24, 16), skyMat);
+sky.frustumCulled = false;
+scene.add(sky);
+
+scene.fog = new THREE.Fog(0x87ceeb, 300, 1200);
+
+/* =========================================================
+   SHARED MATERIALS + HELPERS
+   ========================================================= */
+const MAT = {
+  tire:  new THREE.MeshStandardMaterial({ color: 0x14161a, roughness: 0.97 }),
+  rim:   new THREE.MeshStandardMaterial({ color: 0xc9ced4, roughness: 0.32, metalness: 0.9 }),
+  dark:  new THREE.MeshStandardMaterial({ color: 0x23272c, roughness: 0.85, metalness: 0.15 }),
+  glass: new THREE.MeshStandardMaterial({ color: 0x9fd2ea, roughness: 0.08, metalness: 0.4, transparent: true, opacity: 0.52 }),
+  light: new THREE.MeshStandardMaterial({ color: 0xfff6cf, emissive: 0xffe9a0, emissiveIntensity: 1.4, roughness: 0.4 }),
+  tail:  new THREE.MeshStandardMaterial({ color: 0xff4433, emissive: 0xff2a1a, emissiveIntensity: 1.2 }),
+  chrome:new THREE.MeshStandardMaterial({ color: 0x9aa3ab, roughness: 0.3, metalness: 0.95 })
+};
+
+function box(w, h, d, mat, x, y, z) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+  m.position.set(x, y, z);
+  m.castShadow = true; m.receiveShadow = true;
+  return m;
+}
+function makeWheel(radius, width) {
+  const g = new THREE.Group();
+  const tire = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, width, 16), MAT.tire);
+  tire.rotation.z = Math.PI / 2; tire.castShadow = true; g.add(tire);
+  const rim = new THREE.Mesh(new THREE.CylinderGeometry(radius * 0.52, radius * 0.52, width * 1.04, 10), MAT.rim);
+  rim.rotation.z = Math.PI / 2; g.add(rim);
+  for (let i = 0; i < 5; i++) {
+    const sp = new THREE.Mesh(new THREE.BoxGeometry(width * 1.06, radius * 0.86, 0.09), MAT.rim);
+    sp.rotation.x = (i / 5) * Math.PI * 2; g.add(sp);
+  }
+  return g;
+}
+
+/* =========================================================
+   VEHICLE BUILDERS
+   ========================================================= */
+const BUILDERS = {
+  jeep(g, paint) {
+    g.add(box(1.90, 0.55, 3.60, paint, 0, 0.95, 0));
+    g.add(box(1.82, 0.30, 1.45, paint, 0, 1.30, 1.05));
+    g.add(box(1.74, 0.66, 1.85, paint, 0, 1.58, -0.45));
+    g.add(box(1.80, 0.10, 1.95, MAT.dark, 0, 1.94, -0.45));
+    g.add(box(1.62, 0.50, 0.07, MAT.glass, 0, 1.58, 0.48));
+    g.add(box(0.07, 0.50, 1.30, MAT.glass, -0.87, 1.58, -0.50));
+    g.add(box(0.07, 0.50, 1.30, MAT.glass,  0.87, 1.58, -0.50));
+    g.add(box(2.02, 0.22, 0.32, MAT.dark, 0, 0.80, 1.86));
+    g.add(box(2.02, 0.22, 0.32, MAT.dark, 0, 0.80, -1.86));
+    g.add(box(0.30, 0.24, 0.10, MAT.light, -0.62, 1.14, 1.80));
+    g.add(box(0.30, 0.24, 0.10, MAT.light,  0.62, 1.14, 1.80));
+    g.add(box(0.26, 0.20, 0.10, MAT.tail, -0.70, 1.14, -1.82));
+    g.add(box(0.26, 0.20, 0.10, MAT.tail,  0.70, 1.14, -1.82));
+    g.add(box(0.14, 1.10, 0.14, MAT.dark, -0.90, 1.55, 1.15));
+    g.add(box(1.20, 0.14, 0.18, MAT.dark, 0, 2.06, 0.40));
+    g.add(box(0.24, 0.14, 0.10, MAT.light, -0.40, 2.06, 0.52));
+    g.add(box(0.24, 0.14, 0.10, MAT.light,  0.00, 2.06, 0.52));
+    g.add(box(0.24, 0.14, 0.10, MAT.light,  0.40, 2.06, 0.52));
+    for (const sx of [-1, 1]) {
+      g.add(box(0.20, 0.16, 1.20, MAT.dark, sx * 0.98, 0.86, 1.28));
+      g.add(box(0.20, 0.16, 1.20, MAT.dark, sx * 0.98, 0.86, -1.28));
+    }
+  },
+  buggy(g, paint) {
+    g.add(box(1.70, 0.42, 3.30, paint, 0, 0.80, 0));
+    g.add(box(1.50, 0.34, 1.10, paint, 0, 1.10, 1.10));
+    g.add(box(1.30, 0.50, 1.20, MAT.dark, 0, 1.22, -0.55));
+    g.add(box(1.22, 0.44, 0.07, MAT.glass, 0, 1.34, 0.40));
+    g.add(box(0.10, 0.95, 0.10, MAT.chrome, -0.72, 1.55, 0.42));
+    g.add(box(0.10, 0.95, 0.10, MAT.chrome,  0.72, 1.55, 0.42));
+    g.add(box(0.10, 0.95, 0.10, MAT.chrome, -0.72, 1.55, -1.05));
+    g.add(box(0.10, 0.95, 0.10, MAT.chrome,  0.72, 1.55, -1.05));
+    g.add(box(1.54, 0.10, 0.10, MAT.chrome, 0, 2.02, 0.42));
+    g.add(box(1.54, 0.10, 0.10, MAT.chrome, 0, 2.02, -1.05));
+    g.add(box(0.10, 0.10, 1.47, MAT.chrome, -0.72, 2.02, -0.31));
+    g.add(box(0.10, 0.10, 1.47, MAT.chrome,  0.72, 2.02, -0.31));
+    g.add(box(1.85, 0.16, 0.24, MAT.dark, 0, 0.70, 1.70));
+    g.add(box(0.26, 0.20, 0.09, MAT.light, -0.52, 1.00, 1.60));
+    g.add(box(0.26, 0.20, 0.09, MAT.light,  0.52, 1.00, 1.60));
+    g.add(box(0.22, 0.16, 0.09, MAT.tail, -0.55, 0.98, -1.62));
+    g.add(box(0.22, 0.16, 0.09, MAT.tail,  0.55, 0.98, -1.62));
+    g.add(box(0.95, 0.42, 0.75, MAT.dark, 0, 1.10, -1.15));
+    for (const sx of [-1, 1]) {
+      g.add(box(0.22, 0.14, 1.15, MAT.dark, sx * 0.96, 0.78, 1.20));
+      g.add(box(0.22, 0.14, 1.15, MAT.dark, sx * 0.96, 0.78, -1.20));
+    }
+  },
+  truck(g, paint) {
+    g.add(box(2.10, 0.70, 4.60, paint, 0, 1.18, 0));
+    g.add(box(2.02, 0.34, 1.55, paint, 0, 1.66, 1.55));
+    g.add(box(1.94, 0.85, 1.75, paint, 0, 1.95, -0.10));
+    g.add(box(1.98, 0.12, 1.85, MAT.dark, 0, 2.42, -0.10));
+    g.add(box(1.80, 0.58, 0.07, MAT.glass, 0, 1.96, 0.82));
+    g.add(box(0.07, 0.58, 1.20, MAT.glass, -0.97, 1.96, -0.10));
+    g.add(box(0.07, 0.58, 1.20, MAT.glass,  0.97, 1.96, -0.10));
+    g.add(box(2.10, 0.55, 1.70, MAT.dark, 0, 1.62, -2.35));
+    g.add(box(2.10, 0.30, 0.14, paint, 0, 1.90, -3.18));
+    g.add(box(2.24, 0.24, 0.30, MAT.dark, 0, 1.02, 2.32));
+    g.add(box(0.14, 0.60, 0.14, MAT.chrome, -0.90, 1.35, 2.30));
+    g.add(box(0.14, 0.60, 0.14, MAT.chrome,  0.90, 1.35, 2.30));
+    g.add(box(0.36, 0.28, 0.10, MAT.light, -0.72, 1.60, 2.28));
+    g.add(box(0.36, 0.28, 0.10, MAT.light,  0.72, 1.60, 2.28));
+    g.add(box(0.28, 0.22, 0.10, MAT.tail, -0.80, 1.55, -3.20));
+    g.add(box(0.28, 0.22, 0.10, MAT.tail,  0.80, 1.55, -3.20));
+    g.add(box(1.50, 0.16, 0.20, MAT.dark, 0, 2.55, 0.55));
+    for (let i = -1; i <= 1; i++)
+      g.add(box(0.28, 0.14, 0.10, MAT.light, i * 0.50, 2.55, 0.66));
+    for (const sx of [-1, 1]) {
+      g.add(box(0.24, 0.18, 1.40, MAT.dark, sx * 1.10, 1.02, 1.60));
+      g.add(box(0.24, 0.18, 1.40, MAT.dark, sx * 1.10, 1.02, -1.60));
+    }
+  },
+  rally(g, paint) {
+    g.add(box(1.86, 0.58, 3.95, paint, 0, 0.88, 0));
+    g.add(box(1.80, 0.26, 1.40, paint, 0, 1.22, 1.22));
+    g.add(box(1.78, 0.60, 1.95, paint, 0, 1.45, -0.30));
+    g.add(box(1.82, 0.09, 2.05, MAT.dark, 0, 1.79, -0.30));
+    g.add(box(1.66, 0.46, 0.07, MAT.glass, 0, 1.46, 0.66));
+    g.add(box(0.07, 0.46, 1.35, MAT.glass, -0.88, 1.46, -0.30));
+    g.add(box(0.07, 0.46, 1.35, MAT.glass,  0.88, 1.46, -0.30));
+    g.add(box(1.98, 0.20, 0.30, MAT.dark, 0, 0.74, 2.02));
+    g.add(box(1.98, 0.20, 0.30, MAT.dark, 0, 0.74, -2.02));
+    g.add(box(0.34, 0.20, 0.09, MAT.light, -0.58, 1.06, 1.98));
+    g.add(box(0.34, 0.20, 0.09, MAT.light,  0.58, 1.06, 1.98));
+    g.add(box(0.26, 0.18, 0.09, MAT.tail, -0.66, 1.06, -2.00));
+    g.add(box(0.26, 0.18, 0.09, MAT.tail,  0.66, 1.06, -2.00));
+    g.add(box(0.70, 0.14, 0.42, MAT.dark, 0, 1.88, 0.42));
+    g.add(box(1.80, 0.10, 0.40, MAT.dark, 0, 1.94, -1.72));
+    for (const sx of [-1, 1]) {
+      g.add(box(0.20, 0.15, 1.22, MAT.dark, sx * 0.96, 0.78, 1.36));
+      g.add(box(0.20, 0.15, 1.22, MAT.dark, sx * 0.96, 0.78, -1.36));
+    }
+  },
+  sportscar(g, paint) {
+    g.add(box(1.90, 0.42, 4.30, paint, 0, 0.55, 0));
+    g.add(box(1.80, 0.24, 1.50, paint, 0, 0.85, 1.20));
+    g.add(box(1.60, 0.42, 1.50, paint, 0, 0.90, -0.35));
+    g.add(box(1.62, 0.40, 0.06, MAT.glass, 0, 1.02, 0.42));
+    g.add(box(0.06, 0.38, 1.20, MAT.glass, -0.82, 1.02, -0.35));
+    g.add(box(0.06, 0.38, 1.20, MAT.glass,  0.82, 1.02, -0.35));
+    g.add(box(1.60, 0.10, 0.06, MAT.tail, 0, 0.85, -2.18));
+    g.add(box(1.55, 0.12, 0.05, MAT.light, 0, 0.72, 2.14));
+    g.add(box(1.90, 0.10, 0.20, MAT.dark, 0, 0.36, 2.16));
+    g.add(box(1.90, 0.10, 0.20, MAT.dark, 0, 0.36, -2.16));
+    g.add(box(1.60, 0.08, 0.42, MAT.dark, 0, 1.10, -1.95));
+    g.add(box(0.06, 0.35, 0.34, MAT.dark, -0.75, 0.90, -1.95));
+    g.add(box(0.06, 0.35, 0.34, MAT.dark,  0.75, 0.90, -1.95));
+  },
+  bus(g, paint) {
+    g.add(box(2.20, 2.10, 8.00, paint, 0, 1.85, 0));
+    g.add(box(2.24, 0.15, 8.05, MAT.dark, 0, 2.95, 0));
+    for (let i = 0; i < 6; i++) {
+      const wz = 3.2 - i * 1.15;
+      g.add(box(2.24, 0.62, 0.90, MAT.glass, 0, 2.30, wz));
+    }
+    g.add(box(2.00, 1.10, 0.08, MAT.glass, 0, 2.15, 4.02));
+    g.add(box(0.42, 0.32, 0.08, MAT.light, -0.75, 0.95, 4.02));
+    g.add(box(0.42, 0.32, 0.08, MAT.light,  0.75, 0.95, 4.02));
+    g.add(box(0.35, 0.28, 0.08, MAT.tail, -0.85, 1.10, -4.02));
+    g.add(box(0.35, 0.28, 0.08, MAT.tail,  0.85, 1.10, -4.02));
+    g.add(box(2.30, 0.32, 0.28, MAT.dark, 0, 0.80, 4.06));
+    g.add(box(2.30, 0.32, 0.28, MAT.dark, 0, 0.80, -4.06));
+    g.add(box(0.08, 1.10, 1.20, MAT.dark, -1.13, 1.60, 3.00));
+    for (const sx of [-1, 1]) for (const sz of [2.55, -2.55]) {
+      g.add(box(0.24, 0.20, 1.15, MAT.dark, sx * 1.20, 0.85, sz));
+    }
+  },
+  monstertruck(g, paint) {
+    g.add(box(1.80, 0.55, 4.00, paint, 0, 1.85, 0));
+    g.add(box(1.70, 0.85, 1.55, paint, 0, 2.45, 0.65));
+    g.add(box(1.55, 0.55, 0.07, MAT.glass, 0, 2.48, 1.42));
+    g.add(box(0.07, 0.55, 1.20, MAT.glass, -0.81, 2.48, 0.65));
+    g.add(box(0.07, 0.55, 1.20, MAT.glass,  0.81, 2.48, 0.65));
+    g.add(box(1.80, 0.55, 1.70, paint, 0, 2.10, -1.60));
+    g.add(box(1.70, 0.10, 0.10, MAT.chrome, 0, 3.10, -0.10));
+    g.add(box(0.10, 0.55, 0.10, MAT.chrome, -0.80, 2.85, -0.10));
+    g.add(box(0.10, 0.55, 0.10, MAT.chrome,  0.80, 2.85, -0.10));
+    g.add(box(2.05, 0.30, 0.28, MAT.dark, 0, 1.65, 2.05));
+    g.add(box(2.05, 0.30, 0.28, MAT.dark, 0, 1.65, -2.05));
+    g.add(box(0.35, 0.24, 0.10, MAT.light, -0.60, 2.05, 2.02));
+    g.add(box(0.35, 0.24, 0.10, MAT.light,  0.60, 2.05, 2.02));
+    g.add(box(0.30, 0.22, 0.10, MAT.tail, -0.65, 2.05, -2.02));
+    g.add(box(0.30, 0.22, 0.10, MAT.tail,  0.65, 2.05, -2.02));
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+      g.add(box(0.14, 0.70, 0.14, MAT.chrome, sx * 0.95, 1.30, sz * 1.50));
+    }
+  },
+  tractor(g, paint) {
+    g.add(box(1.30, 0.75, 2.60, paint, 0, 1.05, 0));
+    g.add(box(1.20, 0.35, 1.00, paint, 0, 1.55, 0.80));
+    g.add(box(1.10, 0.85, 1.10, paint, 0, 1.85, -0.55));
+    g.add(box(1.05, 0.55, 0.06, MAT.glass, 0, 1.90, 0.06));
+    g.add(box(0.06, 0.55, 1.00, MAT.glass, -0.56, 1.90, -0.55));
+    g.add(box(0.06, 0.55, 1.00, MAT.glass,  0.56, 1.90, -0.55));
+    g.add(box(0.14, 1.50, 0.14, MAT.dark, 0.60, 2.60, 0.55));
+    g.add(box(0.26, 0.20, 0.10, MAT.light, -0.45, 1.30, 1.30));
+    g.add(box(0.26, 0.20, 0.10, MAT.light,  0.45, 1.30, 1.30));
+    g.add(box(0.22, 0.16, 0.10, MAT.tail, -0.50, 1.30, -1.14));
+    g.add(box(0.22, 0.16, 0.10, MAT.tail,  0.50, 1.30, -1.14));
+    g.add(box(0.90, 0.30, 0.20, MAT.dark, 0, 0.65, 1.42));
+  }
+};
+
+const VEHICLES = [
+  { id:'jeep', name:'Trail Jeep', build:BUILDERS.jeep, color:0x4c7c3c, desc:'Balanced all-rounder.', wheelRadius:0.52, wheelWidth:0.42, wheelBase:2.55, track:1.78, maxSpeed:32, accel:15, brake:27, revMax:11, grip:7.2, steerMax:0.62, bars:{Speed:0.62, Accel:0.60, Grip:0.70, Handling:0.68} },
+  { id:'buggy', name:'Dune Buggy', build:BUILDERS.buggy, color:0xe07a22, desc:'Light and fast. Loves air.', wheelRadius:0.60, wheelWidth:0.50, wheelBase:2.50, track:1.92, maxSpeed:38, accel:19, brake:24, revMax:10, grip:5.9, steerMax:0.70, bars:{Speed:0.92, Accel:0.90, Grip:0.45, Handling:0.82} },
+  { id:'truck', name:'Offroad Truck', build:BUILDERS.truck, color:0x2f5f8f, desc:'Heavy, torquey, unstoppable.', wheelRadius:0.72, wheelWidth:0.55, wheelBase:3.40, track:2.02, maxSpeed:27, accel:13, brake:31, revMax:9, grip:7.8, steerMax:0.55, bars:{Speed:0.42, Accel:0.55, Grip:0.88, Handling:0.45} },
+  { id:'rally', name:'Rally Wagon', build:BUILDERS.rally, color:0xc7382e, desc:'Grippy and quick through corners.', wheelRadius:0.55, wheelWidth:0.45, wheelBase:2.80, track:1.74, maxSpeed:35, accel:17, brake:29, revMax:11, grip:7.6, steerMax:0.60, bars:{Speed:0.78, Accel:0.74, Grip:0.76, Handling:0.80} },
+  { id:'sportscar', name:'Sportscar', build:BUILDERS.sportscar, color:0xd0182a, desc:'Fast and low. Corners on rails.', wheelRadius:0.42, wheelWidth:0.35, wheelBase:2.65, track:1.70, maxSpeed:48, accel:26, brake:34, revMax:14, grip:8.2, steerMax:0.58, bars:{Speed:0.98, Accel:0.95, Grip:0.82, Handling:0.90} },
+  { id:'bus', name:'City Bus', build:BUILDERS.bus, color:0xe8a028, desc:'Huge and slow. Room for everyone.', wheelRadius:0.65, wheelWidth:0.50, wheelBase:5.10, track:2.20, maxSpeed:22, accel:9, brake:26, revMax:7, grip:8.8, steerMax:0.48, bars:{Speed:0.30, Accel:0.30, Grip:0.92, Handling:0.25} },
+  { id:'monstertruck', name:'Monster Truck', build:BUILDERS.monstertruck, color:0xff5500, desc:'Huge wheels. Crushes rocks.', wheelRadius:0.85, wheelWidth:0.65, wheelBase:3.00, track:2.10, maxSpeed:30, accel:16, brake:32, revMax:10, grip:8.5, steerMax:0.55, bars:{Speed:0.45, Accel:0.60, Grip:0.95, Handling:0.40} },
+  { id:'tractor', name:'Farm Tractor', build:BUILDERS.tractor, color:0x3a7a1c, desc:'Slow but tough. Great climber.', wheelRadius:0.72, wheelWidth:0.55, wheelBase:2.40, track:1.85, maxSpeed:20, accel:11, brake:28, revMax:8, grip:9.0, steerMax:0.72, bars:{Speed:0.25, Accel:0.40, Grip:0.98, Handling:0.35} }
+];
+
+const VEHICLE_DEFAULTS = {
+  color: 0x5ad06a, desc: 'Custom vehicle.',
+  wheelRadius: 0.55, wheelWidth: 0.45, wheelBase: 2.7, track: 1.8,
+  maxSpeed: 34, accel: 17, brake: 28, revMax: 11, grip: 7.2, steerMax: 0.6,
+  bars: { Speed: 0.6, Accel: 0.6, Grip: 0.6, Handling: 0.6 }
+};
+
+function buildVehicle(spec) {
+  const root = new THREE.Group();
+  const paint = new THREE.MeshStandardMaterial({ color: spec.color, metalness: 0.38, roughness: 0.48 });
+  const bodyGroup = new THREE.Group();
+  root.add(bodyGroup);
+  spec.build(bodyGroup, paint);
+  const wheels = [];
+  const hw = spec.track / 2, hb = spec.wheelBase / 2;
+  const layout = [[-hw, hb, true], [hw, hb, true], [-hw, -hb, false], [hw, -hb, false]];
+  for (const [wx, wz, front] of layout) {
+    const steerPivot = new THREE.Group();
+    steerPivot.position.set(wx, spec.wheelRadius, wz);
+    const rollPivot = new THREE.Group();
+    steerPivot.add(rollPivot);
+    rollPivot.add(makeWheel(spec.wheelRadius, spec.wheelWidth));
+    root.add(steerPivot);
+    wheels.push({ steerPivot, rollPivot, front, suspY: 0, baseY: spec.wheelRadius });
+  }
+  const headL = new THREE.SpotLight(0xfff4d0, 0, 45, Math.PI / 5, 0.5, 1);
+  headL.position.set(-0.6, 1.0, 1.6);
+  headL.target.position.set(-0.6, 0.5, 12);
+  root.add(headL, headL.target);
+  const headR = new THREE.SpotLight(0xfff4d0, 0, 45, Math.PI / 5, 0.5, 1);
+  headR.position.set(0.6, 1.0, 1.6);
+  headR.target.position.set(0.6, 0.5, 12);
+  root.add(headR, headR.target);
+  return { root, wheels, bodyGroup, paint, headL, headR };
+}
+
+/* =========================================================
+   WORLD BUILD (rebuildable)
+   ========================================================= */
+const worldObjects = [];
+const treeObstacleGrid = new Map();
+const CELL = 40;
+const gridKey = (cx, cz) => cx + ',' + cz;
+
+function addObstacle(x, z, r) {
+  const cx = Math.floor(x / CELL), cz = Math.floor(z / CELL);
+  const k = gridKey(cx, cz);
+  if (!treeObstacleGrid.has(k)) treeObstacleGrid.set(k, []);
+  treeObstacleGrid.get(k).push({ x, z, r });
+}
+function nearbyObstacles(x, z, out) {
+  out.length = 0;
+  const cx = Math.floor(x / CELL), cz = Math.floor(z / CELL);
+  for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) {
+    const arr = treeObstacleGrid.get(gridKey(cx + i, cz + j));
+    if (arr) for (let k = 0; k < arr.length; k++) out.push(arr[k]);
+  }
+  return out;
+}
+
+let roadSamples = [];
+let roadGrid = new Map();
+let waterfalls = [];
+
+function disposeWorld() {
+  for (const obj of worldObjects) {
+    scene.remove(obj);
+    obj.traverse?.(o => {
+      if (o.geometry) o.geometry.dispose();
+      if (o.material) {
+        if (Array.isArray(o.material)) o.material.forEach(m => m.dispose());
+        else o.material.dispose();
+      }
+    });
+  }
+  worldObjects.length = 0;
+  treeObstacleGrid.clear();
+  waterfalls = [];
+}
+function addWorld(obj) { scene.add(obj); worldObjects.push(obj); return obj; }
+
+function buildTerrain() {
+  const geo = new THREE.PlaneGeometry(SIZE, SIZE, SEG, SEG);
+  geo.rotateX(-Math.PI / 2);
+  const pos = geo.attributes.position;
+  for (let i = 0; i < pos.count; i++) pos.setY(i, terrainHeight(pos.getX(i), pos.getZ(i)));
+  geo.computeVertexNormals();
+
+  const c = currentBiome.colors;
+  const cA = new THREE.Color(c.grassA), cB = new THREE.Color(c.grassB);
+  const cDry = new THREE.Color(c.dry), cRock = new THREE.Color(c.rock), cDark = new THREE.Color(c.dark);
+  const cols = new Float32Array(pos.count * 3);
+  const nrm = geo.attributes.normal;
+  const tmp = new THREE.Color();
+  const mesa = currentBiome.mesa;
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+    const slope = 1 - nrm.getY(i);
+    tmp.copy(cA).lerp(cB, fbm(x * 0.018 + 5, z * 0.018 + 5, 2));
+    const shade = fbm(x * 0.0045 + 31, z * 0.0045 + 31, 2);
+    if (shade > 0.55) tmp.lerp(cDark, (shade - 0.55) * 1.1);
+    if (shade < 0.42) tmp.lerp(cDry, (0.42 - shade) * 1.6);
+    if (slope > 0.28) tmp.lerp(cRock, Math.min(1, (slope - 0.28) / 0.34));
+    if (mesa && y > mesa._top - 2 && y < mesa._top + 4) tmp.lerp(cRock, 0.35);
+    cols[i * 3] = tmp.r; cols[i * 3 + 1] = tmp.g; cols[i * 3 + 2] = tmp.b;
+  }
+  geo.setAttribute('color', new THREE.BufferAttribute(cols, 3));
+  const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.96 });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.receiveShadow = true;
+  addWorld(mesh);
+}
+
+const ROAD_PTS = [
+  [-700, 660], [-470, 540], [-250, 610], [-60, 520], [120, 560],
+  [260, 380], [120, 180], [45, -55], [110, -240], [-30, -430],
+  [-260, -540], [-470, -430], [-560, -190], [-640, 40], [-590, 300]
+];
+const SPAWN_XZ = { x: 45, z: -55 };
+const SPAWN = new THREE.Vector3(SPAWN_XZ.x, 0, SPAWN_XZ.z);
+
+function buildRoad() {
+  const curve = new THREE.CatmullRomCurve3(ROAD_PTS.map(p => new THREE.Vector3(p[0], 0, p[1])), true, 'catmullrom', 0.5);
+  curve.arcLengthDivisions = 3000;
+  const N = 1400;
+  roadSamples = [];
+  for (let i = 0; i < N; i++) {
+    const t = i / N;
+    const p = curve.getPointAt(t), tg = curve.getTangentAt(t);
+    roadSamples.push({ x: p.x, z: p.z, tx: tg.x, tz: tg.z });
+  }
+  roadGrid = new Map();
+  const RC = 24;
+  for (let i = 0; i < roadSamples.length; i++) {
+    const p = roadSamples[i];
+    const k = Math.floor(p.x / RC) + ',' + Math.floor(p.z / RC);
+    if (!roadGrid.has(k)) roadGrid.set(k, []);
+    roadGrid.get(k).push(i);
+  }
+
+  const HW = 4.2;
+  const verts = [], uvs = [], idx = [];
+  let dist = 0;
+  for (let i = 0; i <= N; i++) {
+    const p = roadSamples[i % N];
+    if (i > 0) {
+      const q = roadSamples[i - 1];
+      dist += Math.hypot(p.x - q.x, p.z - q.z);
+    }
+    let lx = -p.tz, lz = p.tx;
+    const ll = Math.hypot(lx, lz) || 1;
+    lx /= ll; lz /= ll;
+    const lX = p.x + lx * HW, lZ = p.z + lz * HW;
+    const rX = p.x - lx * HW, rZ = p.z - lz * HW;
+    verts.push(lX, terrainHeight(lX, lZ) + 0.22, lZ);
+    verts.push(rX, terrainHeight(rX, rZ) + 0.22, rZ);
+    const v = dist / 14;
+    uvs.push(0, v, 1, v);
+    if (i < N) { const b = i * 2; idx.push(b, b + 2, b + 1, b + 1, b + 2, b + 3); }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+
+  const c = document.createElement('canvas');
+  c.width = 128; c.height = 256;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = currentBiome.roadColor; ctx.fillRect(0, 0, 128, 256);
+  for (let i = 0; i < 6000; i++) {
+    const x = Math.random() * 128, y = Math.random() * 256;
+    ctx.fillStyle = `rgba(0,0,0,${Math.random() * 0.06})`;
+    ctx.fillRect(x, y, 1 + Math.random() * 1.5, 1 + Math.random() * 1.5);
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = THREE.ClampToEdgeWrapping; tex.wrapT = THREE.RepeatWrapping;
+  tex.colorSpace = THREE.SRGBColorSpace;
+
+  const mesh = new THREE.Mesh(g, new THREE.MeshStandardMaterial({
+    map: tex, roughness: 0.98, side: THREE.DoubleSide,
+    polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2
+  }));
+  mesh.receiveShadow = true; mesh.renderOrder = 1;
+  addWorld(mesh);
+}
+
+function distToRoad(x, z) {
+  const cx = Math.floor(x / 24), cz = Math.floor(z / 24);
+  let best = 1e9;
+  for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) {
+    const arr = roadGrid.get((cx + i) + ',' + (cz + j));
+    if (!arr) continue;
+    for (const k of arr) {
+      const p = roadSamples[k];
+      const dx = p.x - x, dz = p.z - z;
+      const d = dx * dx + dz * dz;
+      if (d < best) best = d;
+    }
+  }
+  return Math.sqrt(best);
+}
+
+function buildForest() {
+  const seed = currentBiome.id.split('').reduce((a, c) => a * 31 + c.charCodeAt(0), 17) >>> 0;
+  const rng = makeSeededRandom(seed);
+  const trees = [], rocks = [];
+  const style = currentBiome.treeStyle || 'mixed';
+  const treeCount = Math.floor(currentBiome.treeCount * (quality === 'low' ? 0.4 : quality === 'medium' ? 0.7 : 1.0));
+
+  const nearBuf = [];
+  const tooClose = (x, z, md) => {
+    nearbyObstacles(x, z, nearBuf);
+    const m2 = md * md;
+    for (const o of nearBuf) {
+      const dx = x - o.x, dz = z - o.z;
+      if (dx * dx + dz * dz < m2) return true;
+    }
+    return false;
+  };
+
+  let guard = 0;
+  while (trees.length < treeCount && guard < treeCount * 20) {
+    guard++;
+    const x = rng() * (SIZE - 52) - (HALF - 26);
+    const z = rng() * (SIZE - 52) - (HALF - 26);
+    const mesa = currentBiome.mesa;
+    if (mesa && Math.hypot(x - mesa.x, z - mesa.z) < mesa.r1 + 22) continue;
+    if (Math.hypot(x - SPAWN.x, z - SPAWN.z) < 18) continue;
+    if (distToRoad(x, z) < 10) continue;
+    if (tooClose(x, z, 2.4)) continue;
+    if (slopeAt(x, z) > 1.05) continue;
+    const broad = fbm(x * 0.0032 + 7, z * 0.0032 + 7, 3);
+    const clump = fbm(x * 0.0115 + 21, z * 0.0115 + 21, 2);
+    const prob = broad * 0.55 + clump * 0.62 - 0.16;
+    if (rng() > prob) continue;
+    const s = 0.72 + rng() * 0.83;
+    trees.push({ x, z, y: terrainHeight(x, z), s, rot: rng() * Math.PI * 2, pine: rng() < 0.64 });
+    addObstacle(x, z, 0.6 * s);
+  }
+
+  const rockCount = Math.floor(260 * (quality === 'low' ? 0.3 : quality === 'medium' ? 0.6 : 1));
+  guard = 0;
+  while (rocks.length < rockCount && guard < 5000) {
+    guard++;
+    const x = rng() * (SIZE - 60) - (HALF - 30);
+    const z = rng() * (SIZE - 60) - (HALF - 30);
+    if (Math.hypot(x - SPAWN.x, z - SPAWN.z) < 14) continue;
+    const mesa = currentBiome.mesa;
+    if (mesa && Math.hypot(x - mesa.x, z - mesa.z) < mesa.r0 * 0.8) continue;
+    if (distToRoad(x, z) < 7) continue;
+    const s = 0.7 + rng() * 2.7;
+    rocks.push({ x, z, y: terrainHeight(x, z) - s * 0.25, s, rot: rng() * 6.28 });
+    if (s > 1.3) addObstacle(x, z, s * 0.8);
+  }
+
+  const dummy = new THREE.Object3D();
+  const col = new THREE.Color();
+
+  // Trunks
+  const trunkGeo = new THREE.CylinderGeometry(0.22, 0.42, 1, 6);
+  trunkGeo.translate(0, 0.5, 0);
+  const trunkMesh = new THREE.InstancedMesh(trunkGeo, new THREE.MeshStandardMaterial({ color: 0x5a4531, roughness: 0.95 }), Math.max(1, trees.length));
+  trunkMesh.castShadow = true; trunkMesh.receiveShadow = true;
+  trees.forEach((t, i) => {
+    dummy.position.set(t.x, t.y, t.z);
+    dummy.rotation.set(0, t.rot, 0);
+    dummy.scale.set(t.s, t.s * (t.pine ? 1.5 : 1.9), t.s);
+    dummy.updateMatrix();
+    trunkMesh.setMatrixAt(i, dummy.matrix);
+  });
+  trunkMesh.count = trees.length;
+  addWorld(trunkMesh);
+
+  const pines = trees.filter(t => t.pine);
+  const leafs = trees.filter(t => !t.pine);
+  
+  // Custom colors for the Lowpoly Valley
+  const pineColor = new THREE.Color(style === 'snowpine' ? 0x2a5040 : style === 'jungle' ? 0x1a4a20 : style === 'scrub' ? 0x5a6a3a : style === 'lowpoly' ? 0x2e8b28 : 0x2a5a28);
+  const leafColor = new THREE.Color(style === 'jungle' ? 0x2a6020 : style === 'scrub' ? 0x8a7a30 : style === 'lowpoly' ? 0x4ade80 : 0x4a7a30);
+
+  const pineMesh = new THREE.InstancedMesh(
+    new THREE.ConeGeometry(1, 1, 8),
+    new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9, flatShading: true }),
+    Math.max(1, pines.length)
+  );
+  pineMesh.castShadow = true; pineMesh.receiveShadow = true;
+  pines.forEach((t, i) => {
+    dummy.position.set(t.x, t.y + t.s * 1.5 + t.s * 1.9, t.z);
+    dummy.rotation.set(0, t.rot, 0);
+    dummy.scale.set(t.s * 1.35, t.s * 4.0, t.s * 1.35);
+    dummy.updateMatrix();
+    pineMesh.setMatrixAt(i, dummy.matrix);
+    col.copy(pineColor).offsetHSL(rng() * 0.06 - 0.03, 0, rng() * 0.1 - 0.05);
+    pineMesh.setColorAt(i, col);
+  });
+  pineMesh.count = pines.length;
+  if (pineMesh.instanceColor) pineMesh.instanceColor.needsUpdate = true;
+  addWorld(pineMesh);
+
+  const leafMesh = new THREE.InstancedMesh(
+    new THREE.IcosahedronGeometry(1, 0),
+    new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.92, flatShading: true }),
+    Math.max(1, leafs.length)
+  );
+  leafMesh.castShadow = true; leafMesh.receiveShadow = true;
+  leafs.forEach((t, i) => {
+    dummy.position.set(t.x, t.y + t.s * 1.9 + t.s * 1.35, t.z);
+    dummy.rotation.set(rng(), t.rot, rng());
+    dummy.scale.set(t.s * 1.9, t.s * 1.75, t.s * 1.9);
+    dummy.updateMatrix();
+    leafMesh.setMatrixAt(i, dummy.matrix);
+    col.copy(leafColor).offsetHSL(rng() * 0.1 - 0.05, 0, rng() * 0.1 - 0.05);
+    leafMesh.setColorAt(i, col);
+  });
+  leafMesh.count = leafs.length;
+  if (leafMesh.instanceColor) leafMesh.instanceColor.needsUpdate = true;
+  addWorld(leafMesh);
+
+  const rockMesh = new THREE.InstancedMesh(
+    new THREE.IcosahedronGeometry(1, 0),
+    new THREE.MeshStandardMaterial({ color: 0x8b8880, roughness: 0.98, flatShading: true }),
+    Math.max(1, rocks.length)
+  );
+  rockMesh.castShadow = true; rockMesh.receiveShadow = true;
+  rocks.forEach((r, i) => {
+    dummy.position.set(r.x, r.y, r.z);
+    dummy.rotation.set(rng() * 0.6, r.rot, rng() * 0.6);
+    dummy.scale.set(r.s, r.s * 0.8, r.s);
+    dummy.updateMatrix();
+    rockMesh.setMatrixAt(i, dummy.matrix);
+  });
+  rockMesh.count = rocks.length;
+  addWorld(rockMesh);
+
+  // --- Lowpoly Valley Specific Props ---
+  if (currentBiomeKey === 'lowpoly_valley') {
+    // 1. Grass Tufts
+    const grassCount = 8000;
+    const grassGeo = new THREE.ConeGeometry(0.4, 1.5, 4);
+    grassGeo.translate(0, 0.75, 0);
+    const grassMat = new THREE.MeshStandardMaterial({ color: 0x4ade80, roughness: 0.9, flatShading: true });
+    const grassMesh = new THREE.InstancedMesh(grassGeo, grassMat, grassCount);
+    let gIdx = 0;
+    for (let i = 0; i < grassCount; i++) {
+      const x = rnd(-HALF + 10, HALF - 10);
+      const z = rnd(-HALF + 10, HALF - 10);
+      if (slopeAt(x, z) > 0.3) continue;
+      if (distToRoad(x, z) < 4) continue;
+      if (terrainHeight(x, z) < -4) continue;
+      dummy.position.set(x, terrainHeight(x, z), z);
+      dummy.rotation.set(0, rnd(0, Math.PI), 0);
+      dummy.scale.set(rnd(0.6, 1.2), rnd(0.8, 1.5), rnd(0.6, 1.2));
+      dummy.updateMatrix();
+      grassMesh.setMatrixAt(gIdx++, dummy.matrix);
+    }
+    grassMesh.count = gIdx;
+    grassMesh.castShadow = true; grassMesh.receiveShadow = true;
+    addWorld(grassMesh);
+
+    // 2. Mushrooms
+    const mushGroup = new THREE.Group();
+    const capGeo = new THREE.SphereGeometry(0.5, 6, 6);
+    const capMat = new THREE.MeshStandardMaterial({ color: 0xcc2222, roughness: 0.8, flatShading: true });
+    const stemGeo = new THREE.CylinderGeometry(0.1, 0.15, 0.6, 5);
+    const stemMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9, flatShading: true });
+    for (let i = 0; i < 50; i++) {
+      const x = rnd(-HALF, HALF);
+      const z = rnd(-HALF, HALF);
+      if (slopeAt(x, z) > 0.2) continue;
+      if (distToRoad(x, z) < 4) continue;
+      const y = terrainHeight(x, z);
+      if (y < -4) continue;
+      const stem = new THREE.Mesh(stemGeo, stemMat);
+      stem.position.set(x, y + 0.3, z);
+      stem.castShadow = true;
+      mushGroup.add(stem);
+      const cap = new THREE.Mesh(capGeo, capMat);
+      cap.position.set(x, y + 0.65, z);
+      cap.scale.set(1, 0.6, 1);
+      cap.castShadow = true;
+      mushGroup.add(cap);
+    }
+    addWorld(mushGroup);
+
+    // 3. Logs
+    const logGroup = new THREE.Group();
+    const logGeo = new THREE.CylinderGeometry(0.4, 0.4, 4, 6);
+    const logMat = new THREE.MeshStandardMaterial({ color: 0x8b5a2b, roughness: 0.9, flatShading: true });
+    for (let i = 0; i < 20; i++) {
+      const x = rnd(-HALF, HALF);
+      const z = rnd(-HALF, HALF);
+      if (slopeAt(x, z) > 0.2) continue;
+      if (distToRoad(x, z) < 8) continue;
+      const y = terrainHeight(x, z);
+      if (y < -4) continue;
+      for (let j = 0; j < 3; j++) {
+        const log = new THREE.Mesh(logGeo, logMat);
+        log.position.set(x + rnd(-0.5, 0.5), y + 0.4 + j * 0.7, z + rnd(-0.5, 0.5));
+        log.rotation.z = Math.PI / 2;
+        log.rotation.y = rnd(0, Math.PI);
+        log.castShadow = true;
+        logGroup.add(log);
+      }
+    }
+    addWorld(logGroup);
+
+    // 4. Clouds
+    const cloudGroup = new THREE.Group();
+    const cloudGeo = new THREE.IcosahedronGeometry(1, 1);
+    const cloudMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, flatShading: true });
+    for (let i = 0; i < 30; i++) {
+      const cx = rnd(-HALF, HALF);
+      const cz = rnd(-HALF, HALF);
+      const cy = rnd(60, 100);
+      const parts = 3 + Math.floor(rnd(0, 3));
+      for (let j = 0; j < parts; j++) {
+        const cloud = new THREE.Mesh(cloudGeo, cloudMat);
+        cloud.position.set(cx + rnd(-4, 4), cy + rnd(-1, 1), cz + rnd(-4, 4));
+        cloud.scale.setScalar(rnd(2, 4));
+        cloud.castShadow = false;
+        cloud.receiveShadow = false;
+        cloudGroup.add(cloud);
+      }
+    }
+    addWorld(cloudGroup);
+  }
+}
+
+function buildWater() {
+  // Custom flat water plane for Lowpoly Valley
+  if (currentBiomeKey === 'lowpoly_valley') {
+    const waterPlane = new THREE.Mesh(
+      new THREE.PlaneGeometry(SIZE, SIZE),
+      new THREE.MeshStandardMaterial({
+        color: 0x1e90ff, transparent: true, opacity: 0.85,
+        roughness: 0.1, metalness: 0.3
+      })
+    );
+    waterPlane.rotation.x = -Math.PI / 2;
+    waterPlane.position.y = -5;
+    addWorld(waterPlane);
+    return;
+  }
+
+  const mesa = currentBiome.mesa;
+  if (!mesa) return;
+  const waterLevel = mesa._top - 1.2;
+  const lake = new THREE.Mesh(
+    new THREE.CircleGeometry(mesa.r0 * 0.95, 56),
+    new THREE.MeshStandardMaterial({
+      color: currentBiome.water, transparent: true, opacity: 0.88,
+      roughness: 0.12, metalness: 0.55
+    })
+  );
+  lake.rotation.x = -Math.PI / 2;
+  lake.position.set(mesa.x, waterLevel, mesa.z);
+  addWorld(lake);
+
+  if (!currentBiome.wfAngles || !currentBiome.wfAngles.length) return;
+
+  const waterTex = makeWaterTexture();
+  const mistTex = makeMistTexture();
+
+  for (const a of currentBiome.wfAngles) {
+    const ax = Math.cos(a), az = Math.sin(a);
+    const rStart = mesa.r0 * 0.85, rEnd = mesa.r1 + 18;
+    const N = 14;
+    const wdir = new THREE.Vector3(-az, 0, ax);
+    const pos = [], uvs = [], idx = [];
+    for (let i = 0; i <= N; i++) {
+      const t = i / N;
+      const r = rStart + (rEnd - rStart) * t;
+      const px = mesa.x + ax * r, pz = mesa.z + az * r;
+      let py = terrainHeight(px, pz);
+      if (i === 0) py = Math.max(py, waterLevel - 0.5);
+      const e = 1.6;
+      const gx = (terrainHeight(px + e, pz) - terrainHeight(px - e, pz)) / (2 * e);
+      const gz = (terrainHeight(px, pz + e) - terrainHeight(px, pz - e)) / (2 * e);
+      const nl = Math.hypot(gx, 1, gz);
+      const nx = -gx / nl, ny = 1 / nl, nz = -gz / nl;
+      const cx = px + nx * 0.9, cy = py + ny * 0.9 + 0.35, cz = pz + nz * 0.9;
+      const w = (7 + t * 7) * 0.5;
+      pos.push(cx - wdir.x * w, cy, cz - wdir.z * w);
+      pos.push(cx + wdir.x * w, cy, cz + wdir.z * w);
+      uvs.push(0, t * 5, 1, t * 5);
+      if (i < N) { const b = i * 2; idx.push(b, b + 1, b + 2, b + 1, b + 3, b + 2); }
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    geo.setIndex(idx);
+    geo.computeVertexNormals();
+    const fallMesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
+      map: waterTex, transparent: true, opacity: 0.92,
+      roughness: 0.22, metalness: 0.25, side: THREE.DoubleSide,
+      emissive: 0x8fd0ee, emissiveIntensity: 0.18, depthWrite: false
+    }));
+    addWorld(fallMesh);
+
+    const bx = mesa.x + ax * rEnd, bz = mesa.z + az * rEnd;
+    const by = terrainHeight(bx, bz);
+    const foam = new THREE.Mesh(
+      new THREE.CircleGeometry(6.5, 16),
+      new THREE.MeshStandardMaterial({ color: 0xdff3ff, transparent: true, opacity: 0.65, roughness: 0.4, depthWrite: false })
+    );
+    foam.rotation.x = -Math.PI / 2;
+    foam.position.set(bx, by + 0.45, bz);
+    addWorld(foam);
+
+    const COUNT = quality === 'low' ? 10 : 26;
+    const mp = new Float32Array(COUNT * 3);
+    const mv = [];
+    for (let i = 0; i < COUNT; i++) {
+      mp[i * 3] = bx + rnd(-5, 5);
+      mp[i * 3 + 1] = by + rnd(0, 4);
+      mp[i * 3 + 2] = bz + rnd(-5, 5);
+      mv.push({ vy: rnd(1.4, 3.4), life: Math.random() * 1.4 });
+    }
+    const mg = new THREE.BufferGeometry();
+    mg.setAttribute('position', new THREE.BufferAttribute(mp, 3));
+    const pts = new THREE.Points(mg, new THREE.PointsMaterial({
+      size: 4.5, map: mistTex, transparent: true, opacity: 0.5,
+      depthWrite: false, blending: THREE.AdditiveBlending, color: 0xdff4ff
+    }));
+    addWorld(pts);
+    waterfalls.push({ pts, mv, base: by, bx, bz });
+  }
+}
+
+function makeWaterTexture() {
+  const c = document.createElement('canvas');
+  c.width = 64; c.height = 256;
+  const g = c.getContext('2d');
+  g.fillStyle = '#7fc4e8'; g.fillRect(0, 0, 64, 256);
+  for (let i = 0; i < 110; i++) {
+    const x = Math.random() * 64, w = 1 + Math.random() * 3.5;
+    const h = 25 + Math.random() * 170, y = Math.random() * 256;
+    g.fillStyle = `rgba(255,255,255,${0.12 + Math.random() * 0.55})`;
+    g.fillRect(x, y, w, h);
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  return t;
+}
+function makeMistTexture() {
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const g = c.getContext('2d');
+  const grd = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  grd.addColorStop(0, 'rgba(255,255,255,1)');
+  grd.addColorStop(0.4, 'rgba(255,255,255,0.55)');
+  grd.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = grd; g.fillRect(0, 0, 64, 64);
+  return new THREE.CanvasTexture(c);
+}
+const mistTex = makeMistTexture();
+
+function applyBiomeLook() {
+  const b = currentBiome;
+  skyMat.uniforms.top.value.set(b.sky.top);
+  skyMat.uniforms.bottom.value.set(b.sky.bottom);
+  scene.fog.color.set(b.fog.color);
+  scene.fog.near = b.fog.near;
+  scene.fog.far = b.fog.far;
+  sun.color.set(b.sun.color);
+  sun.intensity = b.sun.intensity;
+  hemi.color.set(b.hemi.sky);
+  hemi.groundColor.set(b.hemi.ground);
+  hemi.intensity = b.hemi.intensity;
+}
+
+function rebuildWorld() {
+  disposeWorld();
+  buildTerrain();
+  buildRoad();
+  buildForest();
+  buildWater();
+  applyBiomeLook();
+}
+
+/* =========================================================
+   QUALITY
+   ========================================================= */
+let quality = 'high';
+
+function applyQuality() {
+  const pr = quality === 'low' ? 0.7 : quality === 'medium' ? 1.2 : 1.75;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, pr));
+  if (quality === 'low') {
+    sun.castShadow = false;
+    sun.shadow.mapSize.set(512, 512);
+  } else if (quality === 'medium') {
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(1024, 1024);
+  } else {
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(2048, 2048);
+  }
+  if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; }
+  rebuildRainForQuality();
+}
+
+/* =========================================================
+   WEATHER
+   ========================================================= */
+const WEATHER = {
+  clear: { name: 'Clear', grip: 1.0, traction: 1.0, fogNear: 300, fogFar: 1200, particle: null, color: 0xffffff },
+  rain:  { name: 'Rain',  grip: 0.65, traction: 0.75, fogNear: 130, fogFar: 620,  particle: 'rain', color: 0x88aaff },
+  snow:  { name: 'Snow',  grip: 0.5,  traction: 0.6,  fogNear: 90,  fogFar: 460,  particle: 'snow', color: 0xffffff },
+  fog:   { name: 'Fog',   grip: 0.85, traction: 0.9,  fogNear: 40,  fogFar: 260,  particle: null,   color: 0xcccccc }
+};
+let weather = 'clear';
+
+let weatherParticles = null;
+let weatherParticleVel = 0;
+let weatherParticleCount = 0;
+let weatherParticleSize = 0.15;
+
+function rebuildRainForQuality() {
+  if (weatherParticles) {
+    scene.remove(weatherParticles);
+    weatherParticles.geometry.dispose();
+    weatherParticles.material.dispose();
+    weatherParticles = null;
+  }
+  const w = WEATHER[weather];
+  if (!w.particle) return;
+  weatherParticleCount = quality === 'low' ? 400 : quality === 'medium' ? 1200 : 2500;
+  weatherParticleSize = w.particle === 'snow' ? 0.22 : 0.13;
+  weatherParticleVel = w.particle === 'snow' ? 6 : 25;
+  const pos = new Float32Array(weatherParticleCount * 3);
+  for (let i = 0; i < weatherParticleCount; i++) {
+    pos[i * 3] = (Math.random() - 0.5) * 70;
+    pos[i * 3 + 1] = Math.random() * 35;
+    pos[i * 3 + 2] = (Math.random() - 0.5) * 70;
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const mat = new THREE.PointsMaterial({
+    color: w.color, size: weatherParticleSize, transparent: true,
+    opacity: w.particle === 'snow' ? 0.85 : 0.6, depthWrite: false
+  });
+  weatherParticles = new THREE.Points(geo, mat);
+  weatherParticles.frustumCulled = false;
+  scene.add(weatherParticles);
+}
+
+function applyWeather() {
+  const w = WEATHER[weather];
+  scene.fog.near = w.fogNear;
+  scene.fog.far = w.fogFar;
+  rebuildRainForQuality();
+}
+
+function updateWeatherParticles(dt) {
+  if (!weatherParticles) return;
+  const pos = weatherParticles.geometry.attributes.position.array;
+  const carX = car ? car.pos.x : 0;
+  const carZ = car ? car.pos.z : 0;
+  for (let i = 0; i < pos.length; i += 3) {
+    pos[i + 1] -= weatherParticleVel * dt;
+    if (WEATHER[weather].particle === 'snow') {
+      pos[i] += Math.sin((pos[i + 1] + i) * 0.1) * dt * 0.5;
+    }
+    if (pos[i + 1] < -3) {
+      pos[i] = (Math.random() - 0.5) * 70;
+      pos[i + 1] = 32 + Math.random() * 5;
+      pos[i + 2] = (Math.random() - 0.5) * 70;
+    }
+  }
+  weatherParticles.geometry.attributes.position.needsUpdate = true;
+  weatherParticles.position.set(carX, 0, carZ);
+}
+
+/* =========================================================
+   DAY/NIGHT
+   ========================================================= */
+let timeOfDay = 0.35;
+let timeMode = 'noon';
+let dayCycleEnabled = false;
+
+const DAY_TOP = new THREE.Color(0x4a90e2);
+const DAY_BOT = new THREE.Color(0x87ceeb);
+const NIGHT_TOP = new THREE.Color(0x050810);
+const NIGHT_BOT = new THREE.Color(0x1a2030);
+const DUSK_TOP = new THREE.Color(0xff7040);
+const DUSK_BOT = new THREE.Color(0xffb080);
+
+const _tmpTop = new THREE.Color(), _tmpBot = new THREE.Color();
+
+function updateDayNight(dt) {
+  if (dayCycleEnabled) {
+    timeOfDay = (timeOfDay + dt * 0.006) % 1;
+  }
+  const elevAngle = (timeOfDay - 0.25) * Math.PI * 2;
+  const elev = Math.sin(elevAngle);
+  const sunDist = 400;
+  sun.position.set(
+    Math.cos(elevAngle) * sunDist,
+    Math.sin(elevAngle) * sunDist,
+    Math.cos(elevAngle) * sunDist * 0.4
+  );
+
+  const sunBase = currentBiome.sun.intensity;
+  sun.intensity = Math.max(0, elev) * sunBase + (elev > -0.1 ? 0.05 : 0.02);
+  hemi.intensity = currentBiome.hemi.intensity * (0.15 + Math.max(0, elev) * 0.85);
+
+  if (elev > 0.15) {
+    _tmpTop.copy(DUSK_TOP).lerp(DAY_TOP, Math.min(1, (elev - 0.15) / 0.5));
+    _tmpBot.copy(DUSK_BOT).lerp(DAY_BOT, Math.min(1, (elev - 0.15) / 0.5));
+  } else if (elev > -0.15) {
+    const t = (elev + 0.15) / 0.3;
+    _tmpTop.copy(NIGHT_TOP).lerp(DUSK_TOP, t);
+    _tmpBot.copy(NIGHT_BOT).lerp(DUSK_BOT, t);
+  } else {
+    const t = Math.min(1, (elev + 0.5) / 0.35);
+    _tmpTop.copy(NIGHT_TOP).lerp(DUSK_TOP, Math.max(0, t));
+    _tmpBot.copy(NIGHT_BOT).lerp(DUSK_BOT, Math.max(0, t));
+  }
+
+  skyMat.uniforms.top.value.copy(_tmpTop);
+  skyMat.uniforms.bottom.value.copy(_tmpBot);
+  scene.fog.color.copy(_tmpBot);
+
+  const headOn = elev < 0.12;
+  if (car) {
+    car.model.headL.intensity = headOn ? 18 : 0;
+    car.model.headR.intensity = headOn ? 18 : 0;
+  }
+
+  const hrs = Math.floor(timeOfDay * 24);
+  const mins = Math.floor((timeOfDay * 24 - hrs) * 60);
+  const timeHUD = document.getElementById('timeHUD');
+  if (timeHUD) timeHUD.textContent =
+    (dayCycleEnabled ? '⏱ ' : '') +
+    String(hrs).padStart(2, '0') + ':' + String(mins).padStart(2, '0') +
+    (headOn ? ' · NIGHT' : ' · DAY');
+}
+
+/* =========================================================
+   PHYSICS
+   ========================================================= */
+const input = { throttle: 0, steer: 0, handbrake: false };
+const keyState = {};
+const touchInput = { throttle: 0, steer: 0 };
+let rawSteer = 0;
+
+let car = null;
+let selectedVehicleId = 'jeep';
+let state = 'menu';
+let camYaw = 0;
+
+const tmpFwd = new THREE.Vector3();
+const tmpRight = new THREE.Vector3();
+const obstacleBuf = [];
+const eulerTmp = new THREE.Euler(0, 0, 0, 'YXZ');
+
+function roadYawAt(x, z) {
+  let bestI = 0, bestD = Infinity;
+  for (let i = 0; i < roadSamples.length; i++) {
+    const p = roadSamples[i];
+    const d = (p.x - x) ** 2 + (p.z - z) ** 2;
+    if (d < bestD) { bestD = d; bestI = i; }
+  }
+  const p = roadSamples[bestI];
+  return Math.atan2(p.tx, p.tz);
+}
+
+function spawnCar(spec) {
+  if (car) {
+    scene.remove(car.model.root);
+    car.model.root.traverse(o => { if (o.isMesh) o.geometry.dispose(); });
+  }
+  const model = buildVehicle(spec);
+  scene.add(model.root);
+
+  // Use biome spawn if available
+  const spawnXZ = currentBiome.spawn || SPAWN_XZ;
+  SPAWN_XZ.x = spawnXZ.x;
+  SPAWN_XZ.z = spawnXZ.z;
+  SPAWN.x = spawnXZ.x;
+  SPAWN.z = spawnXZ.z;
+  SPAWN.y = terrainHeight(SPAWN.x, SPAWN.z);
+
+  const startYaw = roadYawAt(SPAWN.x, SPAWN.z);
+  car = {
+    spec, model,
+    pos: new THREE.Vector3(SPAWN.x, SPAWN.y, SPAWN.z),
+    vel: new THREE.Vector3(),
+    velY: 0,
+    yaw: startYaw,
+    pitch: 0, roll: 0,
+    steerVis: 0, wheelSpin: 0, speed: 0,
+    airborne: false
+  };
+  camYaw = startYaw;
+  camera.position.set(
+    SPAWN.x - Math.sin(startYaw) * 11,
+    SPAWN.y + 5.5,
+    SPAWN.z - Math.cos(startYaw) * 11
+  );
+  document.getElementById('vname').textContent = spec.name;
+  document.getElementById('bname').textContent = currentBiome.name;
+}
+
+function resetCar() {
+  if (!car) return;
+  SPAWN.y = terrainHeight(SPAWN.x, SPAWN.z);
+  car.pos.set(SPAWN.x, SPAWN.y, SPAWN.z);
+  car.vel.set(0, 0, 0);
+  car.velY = 0;
+  car.yaw = roadYawAt(SPAWN.x, SPAWN.z);
+  car.pitch = car.roll = 0;
+  car.wheelSpin = 0;
+  car.airborne = false;
+  camYaw = car.yaw;
+}
+
+function updateCar(dt) {
+  if (!car) return;
+  const spec = car.spec;
+  const w = WEATHER[weather];
+
+  tmpFwd.set(Math.sin(car.yaw), 0, Math.cos(car.yaw));
+  tmpRight.set(Math.cos(car.yaw), 0, -Math.sin(car.yaw));
+
+  let vF = car.vel.dot(tmpFwd);
+  let vR = car.vel.dot(tmpRight);
+
+  const traction = w.traction;
+
+  const thr = input.throttle;
+  if (thr > 0.01) {
+    const t = 1 - Math.min(1, Math.max(0, vF / spec.maxSpeed));
+    vF += spec.accel * thr * t * traction * dt;
+  } else if (thr < -0.01) {
+    const a = -thr;
+    if (vF > 0.4) vF -= spec.brake * a * traction * dt;
+    else {
+      const t = 1 - Math.min(1, Math.abs(vF) / spec.revMax);
+      vF -= spec.accel * 0.75 * a * t * traction * dt;
+    }
+  } else {
+    vF -= vF * 0.6 * dt;
+  }
+
+  vF -= vF * 0.15 * dt;
+  const roll = 1.0;
+  if (Math.abs(vF) < roll * dt) vF = 0;
+  else vF -= Math.sign(vF) * roll * dt;
+
+  const ex = 1.6;
+  const gx = (terrainHeight(car.pos.x + ex, car.pos.z) - terrainHeight(car.pos.x - ex, car.pos.z)) / (2 * ex);
+  const gz = (terrainHeight(car.pos.x, car.pos.z + ex) - terrainHeight(car.pos.x, car.pos.z - ex)) / (2 * ex);
+  const slopeFwd = gx * tmpFwd.x + gz * tmpFwd.z;
+  vF -= (slopeFwd / Math.sqrt(1 + slopeFwd * slopeFwd)) * 9.81 * 0.62 * dt;
+
+  const gripK = (input.handbrake ? spec.grip * 0.22 : spec.grip) * w.grip;
+  vR *= Math.exp(-gripK * dt);
+
+  const speedRatio = Math.min(1, Math.abs(vF) / spec.maxSpeed);
+  const maxSteer = spec.steerMax * (1 - 0.62 * speedRatio);
+  const steerAngle = -input.steer * maxSteer;
+  const airFactor = car.airborne ? 0.25 : 1.0;
+  const yawRate = (vF / spec.wheelBase) * Math.tan(steerAngle) * airFactor;
+  car.yaw += THREE.MathUtils.clamp(yawRate, -2.4, 2.4) * dt;
+  car.steerVis += (steerAngle - car.steerVis) * Math.min(1, dt * 14);
+
+  car.vel.set(
+    tmpFwd.x * vF + tmpRight.x * vR, 0,
+    tmpFwd.z * vF + tmpRight.z * vR
+  );
+
+  car.pos.x += car.vel.x * dt;
+  car.pos.z += car.vel.z * dt;
+
+  const limit = HALF - 18;
+  if (car.pos.x >  limit) { car.pos.x =  limit; car.vel.x = Math.min(0, car.vel.x); }
+  if (car.pos.x < -limit) { car.pos.x = -limit; car.vel.x = Math.max(0, car.vel.x); }
+  if (car.pos.z >  limit) { car.pos.z =  limit; car.vel.z = Math.min(0, car.vel.z); }
+  if (car.pos.z < -limit) { car.pos.z = -limit; car.vel.z = Math.max(0, car.vel.z); }
+
+  const carRadius = 1.55;
+  nearbyObstacles(car.pos.x, car.pos.z, obstacleBuf);
+  for (const o of obstacleBuf) {
+    const dx = car.pos.x - o.x, dz = car.pos.z - o.z;
+    const dist = Math.hypot(dx, dz);
+    const minD = o.r + carRadius;
+    if (dist < minD && dist > 0.0001) {
+      const nx = dx / dist, nz = dz / dist;
+      const push = minD - dist;
+      car.pos.x += nx * push;
+      car.pos.z += nz * push;
+      const vn = car.vel.x * nx + car.vel.z * nz;
+      if (vn < 0) {
+        car.vel.x -= nx * vn * 1.55;
+        car.vel.z -= nz * vn * 1.55;
+        car.vel.multiplyScalar(0.72);
+      }
+    }
+  }
+
+  const c = Math.cos(car.yaw), s = Math.sin(car.yaw);
+  const hw = spec.track / 2, hb = spec.wheelBase / 2;
+  const wp = [[-hw, hb], [hw, hb], [-hw, -hb], [hw, -hb]];
+  const hs = [];
+  for (let i = 0; i < 4; i++) {
+    const lx = wp[i][0], lz = wp[i][1];
+    const wx = car.pos.x + lx * c + lz * s;
+    const wz = car.pos.z - lx * s + lz * c;
+    hs.push(terrainHeight(wx, wz));
+  }
+  const avgH = (hs[0] + hs[1] + hs[2] + hs[3]) / 4;
+
+  const prevY = car.pos.y;
+  if (car.pos.y > avgH + 1.0) {
+    car.airborne = true;
+    car.velY -= 15 * dt;
+    car.pos.y += car.velY * dt;
+    if (car.pos.y < avgH) {
+      car.pos.y = avgH;
+      if (car.velY < -3) {
+        car.velY = -car.velY * 0.35;
+        for (let k = 0; k < 8; k++)
+          spawnDust(car.pos.x + rnd(-1.5, 1.5), car.pos.y + 0.3, car.pos.z + rnd(-1.5, 1.5));
+      } else {
+        car.velY = 0;
+        car.airborne = false;
+      }
+    }
+  } else {
+    car.airborne = false;
+    car.pos.y += (avgH - car.pos.y) * Math.min(1, dt * 18);
+    car.velY = (car.pos.y - prevY) / Math.max(dt, 0.001);
+  }
+
+  const frontH = (hs[0] + hs[1]) * 0.5;
+  const rearH = (hs[2] + hs[3]) * 0.5;
+  const leftH = (hs[0] + hs[2]) * 0.5;
+  const rightH = (hs[1] + hs[3]) * 0.5;
+  const targetPitch = -Math.atan2(frontH - rearH, spec.wheelBase);
+  const targetRoll  =  Math.atan2(rightH - leftH, spec.track);
+  car.pitch += (targetPitch - car.pitch) * Math.min(1, dt * 9);
+  car.roll  += (targetRoll  - car.roll)  * Math.min(1, dt * 9);
+
+  car.model.root.position.copy(car.pos);
+  eulerTmp.set(car.pitch, car.yaw, car.roll);
+  car.model.root.quaternion.setFromEuler(eulerTmp);
+
+  car.wheelSpin += (vF / spec.wheelRadius) * dt;
+  for (let i = 0; i < 4; i++) {
+    const w_obj = car.model.wheels[i];
+    w_obj.rollPivot.rotation.x = car.wheelSpin;
+    if (w_obj.front) w_obj.steerPivot.rotation.y = car.steerVis;
+    const localTarget = hs[i] - avgH;
+    const clamped = Math.max(-0.3, Math.min(0.3, localTarget));
+    w_obj.suspY += (clamped - w_obj.suspY) * Math.min(1, dt * 15);
+    w_obj.steerPivot.position.y = w_obj.baseY + w_obj.suspY;
+  }
+
+  car.speed = Math.abs(vF);
+  if (car.speed > 7 && Math.random() < 0.75) {
+    const rearZ = -hb;
+    const wx  = car.pos.x + (-hw * 0.6) * c + rearZ * s;
+    const wz  = car.pos.z - (-hw * 0.6) * s + rearZ * c;
+    spawnDust(wx, terrainHeight(wx, wz) + 0.2, wz);
+    const wx2 = car.pos.x + (hw * 0.6) * c + rearZ * s;
+    const wz2 = car.pos.z - (hw * 0.6) * s + rearZ * c;
+    spawnDust(wx2, terrainHeight(wx2, wz2) + 0.2, wz2);
+  }
+}
+
+/* =========================================================
+   DUST
+   ========================================================= */
+const DUST_N = 140;
+const dustPositions = new Float32Array(DUST_N * 3).fill(-9999);
+const dustVel = new Float32Array(DUST_N * 3);
+const dustLife = new Float32Array(DUST_N);
+const dustGeo = new THREE.BufferGeometry();
+dustGeo.setAttribute('position', new THREE.BufferAttribute(dustPositions, 3));
+const dustPoints = new THREE.Points(dustGeo, new THREE.PointsMaterial({
+  color: 0xcdb896, size: 1.5, map: mistTex, transparent: true,
+  opacity: 0.42, depthWrite: false, sizeAttenuation: true
+}));
+dustPoints.frustumCulled = false;
+scene.add(dustPoints);
+let dustIdx = 0;
+
+function spawnDust(x, y, z) {
+  const i = dustIdx = (dustIdx + 1) % DUST_N;
+  dustPositions[i * 3] = x + rnd(-0.5, 0.5);
+  dustPositions[i * 3 + 1] = y + rnd(0, 0.4);
+  dustPositions[i * 3 + 2] = z + rnd(-0.5, 0.5);
+  dustVel[i * 3] = rnd(-1.6, 1.6);
+  dustVel[i * 3 + 1] = rnd(0.8, 2.4);
+  dustVel[i * 3 + 2] = rnd(-1.6, 1.6);
+  dustLife[i] = rnd(0.7, 1.5);
+}
+function updateDust(dt) {
+  for (let i = 0; i < DUST_N; i++) {
+    if (dustLife[i] <= 0) continue;
+    dustLife[i] -= dt;
+    if (dustLife[i] <= 0) { dustPositions[i * 3 + 1] = -9999; continue; }
+    dustPositions[i * 3] += dustVel[i * 3] * dt;
+    dustPositions[i * 3 + 1] += dustVel[i * 3 + 1] * dt;
+    dustPositions[i * 3 + 2] += dustVel[i * 3 + 2] * dt;
+    dustVel[i * 3] *= (1 - dt * 1.6);
+    dustVel[i * 3 + 2] *= (1 - dt * 1.6);
+    dustVel[i * 3 + 1] -= dt * 1.2;
+  }
+  dustGeo.attributes.position.needsUpdate = true;
+}
+
+/* =========================================================
+   CAMERA
+   ========================================================= */
+const camDesired = new THREE.Vector3();
+const camLookAt = new THREE.Vector3();
+const camQ = new THREE.Quaternion();
+const camEuler = new THREE.Euler(0, 0, 0, 'YXZ');
+const camOffset = new THREE.Vector3(0, 4.4, -10.5);
+
+function updateCamera(dt) {
+  if (!car) return;
+  let diff = car.yaw - camYaw;
+  while (diff > Math.PI) diff -= Math.PI * 2;
+  while (diff < -Math.PI) diff += Math.PI * 2;
+  camYaw += diff * Math.min(1, dt * 3.4);
+  camEuler.set(0, camYaw, 0);
+  camQ.setFromEuler(camEuler);
+  camDesired.copy(camOffset).applyQuaternion(camQ).add(car.pos);
+  const groundY = terrainHeight(camDesired.x, camDesired.z) + 2.2;
+  if (camDesired.y < groundY) camDesired.y = groundY;
+  camera.position.lerp(camDesired, 1 - Math.exp(-dt * 6.5));
+  const minY = terrainHeight(camera.position.x, camera.position.z) + 1.8;
+  if (camera.position.y < minY) camera.position.y = minY;
+  camLookAt.set(
+    car.pos.x + Math.sin(car.yaw) * 3.5,
+    car.pos.y + 2.0,
+    car.pos.z + Math.cos(car.yaw) * 3.5
+  );
+  camera.lookAt(camLookAt);
+  const targetFov = 62 + Math.min(1, car.speed / 42) * 10;
+  camera.fov += (targetFov - camera.fov) * Math.min(1, dt * 3);
+  camera.updateProjectionMatrix();
+  sun.position.set(
+    sun.position.x + car.pos.x - (car.prevX || car.pos.x),
+    sun.position.y,
+    sun.position.z + car.pos.z - (car.prevZ || car.pos.z)
+  );
+  car.prevX = car.pos.x; car.prevZ = car.pos.z;
+  sun.target.position.copy(car.pos);
+  sun.target.updateMatrixWorld();
+  sky.position.copy(camera.position);
+}
+
+/* =========================================================
+   PHOTO MODE
+   ========================================================= */
+const photo = { active: false, yaw: 0, pitch: 0.3, dist: 12, target: new THREE.Vector3() };
+let photoDragId = null, photoLastX = 0, photoLastY = 0;
+
+function enterPhoto() {
+  if (!car) return;
+  photo.active = true;
+  state = 'photo';
+  photo.yaw = car.yaw + Math.PI;
+  photo.pitch = 0.35;
+  photo.dist = 12;
+  photo.target.copy(car.pos);
+  document.body.classList.add('photo-mode');
+}
+function exitPhoto() {
+  photo.active = false;
+  state = 'playing';
+  document.body.classList.remove('photo-mode');
+}
+
+renderer.domElement.addEventListener('pointerdown', (e) => {
+  if (!photo.active) return;
+  photoDragId = e.pointerId;
+  photoLastX = e.clientX; photoLastY = e.clientY;
+  renderer.domElement.setPointerCapture(e.pointerId);
+});
+renderer.domElement.addEventListener('pointermove', (e) => {
+  if (!photo.active || e.pointerId !== photoDragId) return;
+  const dx = (e.clientX - photoLastX) / innerWidth;
+  const dy = (e.clientY - photoLastY) / innerHeight;
+  photo.yaw -= dx * 4;
+  photo.pitch = Math.max(-0.2, Math.min(1.3, photo.pitch + dy * 2));
+  photoLastX = e.clientX; photoLastY = e.clientY;
+});
+renderer.domElement.addEventListener('pointerup', () => { photoDragId = null; });
+renderer.domElement.addEventListener('wheel', (e) => {
+  if (!photo.active) return;
+  e.preventDefault();
+  photo.dist = Math.max(3, Math.min(40, photo.dist + e.deltaY * 0.02));
+}, { passive: false });
+
+function updatePhotoCamera() {
+  if (!photo.active) return;
+  const cp = Math.cos(photo.pitch), sp = Math.sin(photo.pitch);
+  camera.position.set(
+    photo.target.x + Math.sin(photo.yaw) * cp * photo.dist,
+    photo.target.y + sp * photo.dist,
+    photo.target.z + Math.cos(photo.yaw) * cp * photo.dist
+  );
+  camera.lookAt(photo.target);
+}
+
+document.getElementById('photoShot').addEventListener('click', () => {
+  renderer.render(scene, camera);
+  const link = document.createElement('a');
+  link.download = 'offroad-photo-' + Date.now() + '.png';
+  link.href = renderer.domElement.toDataURL('image/png');
+  link.click();
+});
+document.getElementById('photoExit').addEventListener('click', exitPhoto);
+
+/* =========================================================
+   IMPORT SYSTEMS
+   ========================================================= */
+const VEHICLE_STORAGE = 'countryside_custom_vehicles_v2';
+const MAP_STORAGE = 'countryside_custom_maps_v2';
+
+function parseBuilder(text) {
+  const t = text.trim().replace(/[;,]\s*$/, '');
+  if (!t) throw new Error('Builder code is empty.');
+  if (/^function\b/.test(t) || /=>/.test(t))
+    return new Function('box', 'MAT', 'THREE', 'return (' + t + ');')(box, MAT, THREE);
+  const m = t.match(/^([a-zA-Z_$][\w$]*)\s*\(([^)]*)\)\s*\{([\s\S]*)\}$/);
+  if (m) return new Function('box', 'MAT', 'THREE', 'return function ' + m[1] + '(' + m[2] + '){' + m[3] + '};')(box, MAT, THREE);
+  return new Function('box', 'MAT', 'THREE', 'return function(g, paint){' + t + '};')(box, MAT, THREE);
+}
+function parseVehicle(text) {
+  const t = text.trim().replace(/[;,]\s*$/, '');
+  if (!t) throw new Error('Vehicle code is empty.');
+  return new Function('THREE', 'BUILDERS', 'return (' + t + ');')(THREE, BUILDERS);
+}
+
+function addCustomVehicle(builderText, vehicleText, opts = {}) {
+  const { persist = true } = opts;
+  const obj = parseVehicle(vehicleText);
+  if (!obj || typeof obj !== 'object') throw new Error('Vehicle must be an object.');
+  if (!obj.id || typeof obj.id !== 'string') throw new Error('Vehicle needs string "id".');
+  if (!obj.name || typeof obj.name !== 'string') throw new Error('Vehicle needs string "name".');
+
+  let buildFn;
+  if (builderText && builderText.trim()) buildFn = parseBuilder(builderText);
+  else if (typeof obj.build === 'function') buildFn = obj.build;
+  else throw new Error('No builder — paste code or set build: BUILDERS.x');
+
+  for (const k in VEHICLE_DEFAULTS) {
+    if (k === 'bars') obj.bars = Object.assign({}, VEHICLE_DEFAULTS.bars, obj.bars || {});
+    else if (obj[k] === undefined) obj[k] = VEHICLE_DEFAULTS[k];
+  }
+  obj.build = buildFn;
+  obj.__custom = true;
+  obj.__builderSrc = builderText || '';
+  obj.__vehicleSrc = vehicleText;
+
+  const tg = new THREE.Group();
+  const tp = new THREE.MeshStandardMaterial({ color: obj.color });
+  obj.build(tg, tp);
+  tg.traverse(o => { if (o.isMesh) o.geometry.dispose(); });
+
+  const existing = VEHICLES.findIndex(v => v.id === obj.id);
+  if (existing >= 0) VEHICLES[existing] = obj;
+  else VEHICLES.push(obj);
+  previewCache.delete(obj.id);
+
+  if (persist) saveCustomVehicles();
+  return obj;
+}
+function saveCustomVehicles() {
+  const list = VEHICLES.filter(v => v.__custom).map(v => ({ builder: v.__builderSrc, vehicle: v.__vehicleSrc }));
+  localStorage.setItem(VEHICLE_STORAGE, JSON.stringify(list));
+}
+function loadCustomVehicles() {
+  let list;
+  try { list = JSON.parse(localStorage.getItem(VEHICLE_STORAGE) || '[]'); } catch (e) { return; }
+  for (const item of list) {
+    try { addCustomVehicle(item.builder, item.vehicle, { persist: false }); }
+    catch (e) { console.warn('Skipped custom vehicle:', e.message); }
+  }
+}
+function clearCustomVehicles() {
+  for (let i = VEHICLES.length - 1; i >= 0; i--) {
+    if (VEHICLES[i].__custom) { previewCache.delete(VEHICLES[i].id); VEHICLES.splice(i, 1); }
+  }
+  if (!VEHICLES.find(v => v.id === selectedVehicleId)) selectedVehicleId = VEHICLES[0].id;
+  localStorage.removeItem(VEHICLE_STORAGE);
+}
+
+function parseHeightFn(text) {
+  const t = text.trim();
+  if (!t) throw new Error('Height function is empty.');
+  if (/^function\b/.test(t) || /=>/.test(t))
+    return new Function('fbm', 'vnoise', 'hash2', 'return (' + t + ');')(fbm, vnoise, hash2);
+  return new Function('fbm', 'vnoise', 'hash2', 'return function heightAt(x, z){' + t + '};')(fbm, vnoise, hash2);
+}
+function parseBiomeConfig(text) {
+  const t = text.trim().replace(/[;,]\s*$/, '');
+  return new Function('return (' + t + ');')();
+}
+
+const MAP_DEFAULTS = {
+  colors: { grassA: 0x4a7032, grassB: 0x6f9a46, dry: 0x8d9450, rock: 0x77736b, dark: 0x2f4a24 },
+  sky: { top: 0x2f74b8, bottom: 0xd3e6f4 },
+  fog: { color: 0xa9c6dd, near: 260, far: 1150 },
+  sun: { color: 0xfff0cf, intensity: 2.4 },
+  hemi: { sky: 0xc8e2f7, ground: 0x49582f, intensity: 1.0 },
+  water: 0x2f7fae, roadColor: '#8b7355', treeCount: 2200,
+  mesa: null, wfAngles: [], treeStyle: 'mixed', spawn: null
+};
+
+function addCustomMap(heightSrc, configSrc, opts = {}) {
+  const { persist = true } = opts;
+  const baseHeight = parseHeightFn(heightSrc);
+  const cfg = parseBiomeConfig(configSrc);
+  if (!cfg || typeof cfg !== 'object') throw new Error('Config must be an object.');
+  if (!cfg.id || typeof cfg.id !== 'string') throw new Error('Config needs string "id".');
+  if (!cfg.name || typeof cfg.name !== 'string') throw new Error('Config needs string "name".');
+
+  const merged = {};
+  for (const k in MAP_DEFAULTS) {
+    if (typeof MAP_DEFAULTS[k] === 'object' && MAP_DEFAULTS[k] !== null && !Array.isArray(MAP_DEFAULTS[k]))
+      merged[k] = Object.assign({}, MAP_DEFAULTS[k], cfg[k] || {});
+    else
+      merged[k] = cfg[k] !== undefined ? cfg[k] : MAP_DEFAULTS[k];
+  }
+  merged.id = cfg.id;
+  merged.name = cfg.name;
+  merged.baseHeight = baseHeight;
+  merged.__custom = true;
+  merged.__heightSrc = heightSrc;
+  merged.__configSrc = configSrc;
+
+  baseHeight(0, 0);
+
+  BIOMES[merged.id] = merged;
+  refreshBiomeMeta(merged);
+  if (persist) saveCustomMaps();
+  return merged;
+}
+function saveCustomMaps() {
+  const list = Object.values(BIOMES)
+    .filter(b => b.__custom)
+    .map(b => ({ height: b.__heightSrc, config: b.__configSrc }));
+  localStorage.setItem(MAP_STORAGE, JSON.stringify(list));
+}
+function loadCustomMaps() {
+  let list;
+  try { list = JSON.parse(localStorage.getItem(MAP_STORAGE) || '[]'); } catch (e) { return; }
+  for (const item of list) {
+    try { addCustomMap(item.height, item.config, { persist: false }); }
+    catch (e) { console.warn('Skipped custom map:', e.message); }
+  }
+}
+function clearCustomMaps() {
+  for (const k in BIOMES) if (BIOMES[k].__custom) delete BIOMES[k];
+  localStorage.removeItem(MAP_STORAGE);
+  if (!BIOMES[currentBiomeKey]) {
+    currentBiomeKey = 'lowpoly_valley';
+    currentBiome = BIOMES.lowpoly_valley;
+  }
+}
+
+/* =========================================================
+   PREVIEW RENDERING
+   ========================================================= */
+const previewCache = new Map();
+let _prevRenderer = null, _prevScene = null, _prevCam = null;
+
+function ensurePreviewRenderer() {
+  if (_prevRenderer) return;
+  _prevRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+  _prevRenderer.setSize(260, 170);
+  _prevRenderer.setPixelRatio(2);
+  _prevRenderer.outputColorSpace = THREE.SRGBColorSpace;
+  _prevScene = new THREE.Scene();
+  _prevScene.add(new THREE.HemisphereLight(0xffffff, 0x334455, 2.2));
+  const dl = new THREE.DirectionalLight(0xffffff, 2.6); dl.position.set(4, 6, 5); _prevScene.add(dl);
+  const dl2 = new THREE.DirectionalLight(0x88aaff, 1.0); dl2.position.set(-5, 3, -4); _prevScene.add(dl2);
+  _prevCam = new THREE.PerspectiveCamera(34, 260 / 170, 0.1, 100);
+  _prevCam.position.set(5.2, 2.9, 5.6); _prevCam.lookAt(0, 0.85, 0);
+}
+function getPreview(spec) {
+  if (previewCache.has(spec.id)) return previewCache.get(spec.id);
+  ensurePreviewRenderer();
+  const v = buildVehicle(spec);
+  _prevScene.add(v.root);
+  _prevRenderer.render(_prevScene, _prevCam);
+  const url = _prevRenderer.domElement.toDataURL('image/png');
+  _prevScene.remove(v.root);
+  v.root.traverse(o => { if (o.isMesh) o.geometry.dispose(); });
+  previewCache.set(spec.id, url);
+  return url;
+}
+
+/* =========================================================
+   AUDIO
+   ========================================================= */
+const AudioSys = (() => {
+  let ctx = null, master = null, musicBus = null, sfxBus = null;
+  let muted = false, started = false, carActive = false;
+  let engOsc1, engOsc2, engSub, engFilter, engGain;
+  let engNoise, engNoiseGain, engNoiseFilter;
+  let rumbleSrc, rumbleGain, rumbleFilter;
+  let waterSrc, waterGain, waterFilter;
+  let musicTimer = null, nextNoteTime = 0, step = 0;
+  const BPM = 68, BEAT = 60 / BPM;
+  const CHORDS = [
+    { root: 220.00, notes: [220.00, 261.63, 329.63] },
+    { root: 174.61, notes: [174.61, 220.00, 261.63] },
+    { root: 130.81, notes: [130.81, 164.81, 196.00] },
+    { root: 196.00, notes: [196.00, 246.94, 293.66] },
+  ];
+  const MELODY = [
+    329.63, 392.00, 440.00, 392.00, 329.63, 293.66, 261.63, 293.66,
+    329.63, 392.00, 440.00, 523.25, 440.00, 392.00, 329.63, 293.66,
+  ];
+  function makeNoiseBuffer(sec = 2) {
+    const len = Math.floor(ctx.sampleRate * sec);
+    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+    return buf;
+  }
+  function schedulePad(time, freq, dur) {
+    const o1 = ctx.createOscillator(), o2 = ctx.createOscillator();
+    const g = ctx.createGain(), f = ctx.createBiquadFilter();
+    o1.type = 'sine'; o1.frequency.value = freq;
+    o2.type = 'triangle'; o2.frequency.value = freq * 1.005;
+    f.type = 'lowpass'; f.frequency.value = 900;
+    g.gain.setValueAtTime(0, time);
+    g.gain.linearRampToValueAtTime(0.045, time + dur * 0.35);
+    g.gain.linearRampToValueAtTime(0.020, time + dur * 0.70);
+    g.gain.linearRampToValueAtTime(0, time + dur);
+    o1.connect(f); o2.connect(f); f.connect(g); g.connect(musicBus);
+    o1.start(time); o2.start(time); o1.stop(time + dur + 0.1); o2.stop(time + dur + 0.1);
+  }
+  function schedulePluck(time, freq) {
+    const o = ctx.createOscillator(), g = ctx.createGain(), f = ctx.createBiquadFilter();
+    o.type = 'triangle'; o.frequency.value = freq;
+    f.type = 'lowpass';
+    f.frequency.setValueAtTime(2400, time);
+    f.frequency.exponentialRampToValueAtTime(800, time + 0.5);
+    g.gain.setValueAtTime(0, time);
+    g.gain.linearRampToValueAtTime(0.055, time + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0008, time + 0.8);
+    o.connect(f); f.connect(g); g.connect(musicBus);
+    o.start(time); o.stop(time + 0.9);
+  }
+  function scheduleBass(time, freq, dur) {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = 'sine'; o.frequency.value = freq / 2;
+    g.gain.setValueAtTime(0, time);
+    g.gain.linearRampToValueAtTime(0.09, time + 0.05);
+    g.gain.exponentialRampToValueAtTime(0.001, time + dur * 0.9);
+    o.connect(g); g.connect(musicBus);
+    o.start(time); o.stop(time + dur + 0.1);
+  }
+  function musicTick() {
+    if (!ctx) return;
+    while (nextNoteTime < ctx.currentTime + 0.6) {
+      const chordIdx = Math.floor(step / 4) % CHORDS.length;
+      const beatInChord = step % 4;
+      const chord = CHORDS[chordIdx];
+      if (beatInChord === 0) {
+        for (const f of chord.notes) schedulePad(nextNoteTime, f, BEAT * 4 * 0.98);
+        scheduleBass(nextNoteTime, chord.root, BEAT * 2);
+      }
+      if (step % 2 === 0) {
+        const mel = MELODY[(Math.floor(step / 2) + chordIdx * 3) % MELODY.length];
+        schedulePluck(nextNoteTime, mel);
+      }
+      if (Math.random() < 0.18) schedulePluck(nextNoteTime + BEAT * 0.5, MELODY[(step + 5) % MELODY.length] * 2);
+      nextNoteTime += BEAT; step++;
+    }
+  }
+  function init() {
+    if (started) return;
+    started = true;
+    ctx = new (window.AudioContext || window.webkitAudioContext)();
+    master = ctx.createGain(); master.gain.value = muted ? 0 : 0.9; master.connect(ctx.destination);
+    const comp = ctx.createDynamicsCompressor();
+    comp.threshold.value = -18; comp.knee.value = 20; comp.ratio.value = 6;
+    comp.connect(master);
+    musicBus = ctx.createGain(); musicBus.gain.value = 0.55; musicBus.connect(comp);
+    sfxBus = ctx.createGain(); sfxBus.gain.value = 0.85; sfxBus.connect(comp);
+    engGain = ctx.createGain(); engGain.gain.value = 0;
+    engFilter = ctx.createBiquadFilter(); engFilter.type = 'lowpass'; engFilter.frequency.value = 800;
+    engFilter.connect(engGain); engGain.connect(sfxBus);
+    engOsc1 = ctx.createOscillator(); engOsc1.type = 'sawtooth'; engOsc1.frequency.value = 60; engOsc1.connect(engFilter);
+    engOsc2 = ctx.createOscillator(); engOsc2.type = 'square'; engOsc2.frequency.value = 60 * 1.007;
+    const engOsc2Gain = ctx.createGain(); engOsc2Gain.gain.value = 0.35;
+    engOsc2.connect(engOsc2Gain); engOsc2Gain.connect(engFilter);
+    engSub = ctx.createOscillator(); engSub.type = 'sine'; engSub.frequency.value = 30;
+    const engSubGain = ctx.createGain(); engSubGain.gain.value = 0.55;
+    engSub.connect(engSubGain); engSubGain.connect(sfxBus);
+    engOsc1.start(); engOsc2.start(); engSub.start();
+    const nbuf = makeNoiseBuffer(2);
+    engNoise = ctx.createBufferSource(); engNoise.buffer = nbuf; engNoise.loop = true;
+    engNoiseFilter = ctx.createBiquadFilter(); engNoiseFilter.type = 'bandpass'; engNoiseFilter.frequency.value = 400;
+    engNoiseGain = ctx.createGain(); engNoiseGain.gain.value = 0;
+    engNoise.connect(engNoiseFilter); engNoiseFilter.connect(engNoiseGain); engNoiseGain.connect(sfxBus);
+    engNoise.start();
+    rumbleSrc = ctx.createBufferSource(); rumbleSrc.buffer = nbuf; rumbleSrc.loop = true;
+    rumbleFilter = ctx.createBiquadFilter(); rumbleFilter.type = 'lowpass'; rumbleFilter.frequency.value = 180;
+    rumbleGain = ctx.createGain(); rumbleGain.gain.value = 0;
+    rumbleSrc.connect(rumbleFilter); rumbleFilter.connect(rumbleGain); rumbleGain.connect(sfxBus);
+    rumbleSrc.start();
+    waterSrc = ctx.createBufferSource(); waterSrc.buffer = nbuf; waterSrc.loop = true;
+    waterFilter = ctx.createBiquadFilter(); waterFilter.type = 'bandpass'; waterFilter.frequency.value = 1100;
+    waterGain = ctx.createGain(); waterGain.gain.value = 0;
+    waterSrc.connect(waterFilter); waterFilter.connect(waterGain); waterGain.connect(sfxBus);
+    waterSrc.start();
+    nextNoteTime = ctx.currentTime + 0.25;
+    musicTick();
+    musicTimer = setInterval(musicTick, 120);
+  }
+  function resume() { if (ctx && ctx.state === 'suspended') ctx.resume(); }
+  function setMuted(m) {
+    muted = m;
+    if (master) master.gain.setTargetAtTime(m ? 0 : 0.9, ctx.currentTime, 0.05);
+  }
+  function toggleMute() { setMuted(!muted); return muted; }
+  function setCarActive(a) {
+    carActive = a;
+    if (!ctx) return;
+    if (!a) {
+      const t = ctx.currentTime;
+      engGain.gain.setTargetAtTime(0, t, 0.1);
+      engNoiseGain.gain.setTargetAtTime(0, t, 0.1);
+      rumbleGain.gain.setTargetAtTime(0, t, 0.1);
+    }
+  }
+  function updateEngine(speedKmh, maxKmh, throttle) {
+    if (!ctx || !carActive) return;
+    const t = ctx.currentTime;
+    const sp = Math.min(1, speedKmh / Math.max(30, maxKmh));
+    const rpm = 0.18 + sp * 0.82 + Math.max(0, throttle) * 0.12;
+    const baseFreq = 38 + rpm * 140;
+    engOsc1.frequency.setTargetAtTime(baseFreq, t, 0.06);
+    engOsc2.frequency.setTargetAtTime(baseFreq * 1.007, t, 0.06);
+    engSub.frequency.setTargetAtTime(baseFreq * 0.5, t, 0.06);
+    engFilter.frequency.setTargetAtTime(500 + rpm * 1600, t, 0.08);
+    engGain.gain.setTargetAtTime(0.10 + rpm * 0.16 + Math.max(0, throttle) * 0.05, t, 0.08);
+    engNoiseGain.gain.setTargetAtTime(0.010 + sp * 0.018 + Math.max(0, throttle) * 0.010, t, 0.10);
+    engNoiseFilter.frequency.setTargetAtTime(300 + rpm * 900, t, 0.10);
+  }
+  function updateRumble(intensity, offRoad) {
+    if (!ctx || !carActive) return;
+    const target = Math.min(1, intensity) * (offRoad ? 0.22 : 0.07);
+    rumbleGain.gain.setTargetAtTime(target, ctx.currentTime, 0.08);
+    rumbleFilter.frequency.setTargetAtTime(offRoad ? 220 : 120, ctx.currentTime, 0.10);
+  }
+  function updateWaterfall(prox) {
+    if (!ctx) return;
+    waterGain.gain.setTargetAtTime(Math.min(1, prox) * 0.16, ctx.currentTime, 0.20);
+  }
+  return { init, resume, setMuted, toggleMute, setCarActive,
+           updateEngine, updateRumble, updateWaterfall,
+           get muted() { return muted; } };
+})();
+
+/* =========================================================
+   INPUT
+   ========================================================= */
+addEventListener('keydown', (e) => {
+  keyState[e.code] = true;
+  if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) e.preventDefault();
+  if (e.code === 'KeyR' && state === 'playing') resetCar();
+  if (e.code === 'KeyM') toggleMuteUI();
+  if (e.code === 'KeyP') { if (state === 'playing') enterPhoto(); else if (state === 'photo') exitPhoto(); }
+  if (e.code === 'Escape') { if (state === 'photo') exitPhoto(); else if (state === 'playing') openMenu(); }
+  if (e.code === 'KeyN') cycleTimeQuick();
+});
+addEventListener('keyup', (e) => { keyState[e.code] = false; });
+addEventListener('blur', () => { for (const k in keyState) keyState[k] = false; });
+
+function readKeyboard() {
+  let thr = 0, st = 0;
+  if (keyState['KeyW'] || keyState['ArrowUp']) thr += 1;
+  if (keyState['KeyS'] || keyState['ArrowDown']) thr -= 1;
+  if (keyState['KeyA'] || keyState['ArrowLeft']) st -= 1;
+  if (keyState['KeyD'] || keyState['ArrowRight']) st += 1;
+  return { thr, st, hb: !!keyState['Space'] };
+}
+
+const stickEl = document.getElementById('stick');
+const knobEl = document.getElementById('knob');
+let stickId = null, stickRect = null;
+function updateStick(cx, cy) {
+  const r = stickRect;
+  let dx = (cx - (r.left + r.width / 2)) / (r.width / 2);
+  let dy = (cy - (r.top + r.height / 2)) / (r.height / 2);
+  dx = Math.max(-1, Math.min(1, dx));
+  dy = Math.max(-1, Math.min(1, dy));
+  touchInput.steer = dx;
+  knobEl.style.transform = `translate(calc(-50% + ${dx * 34}px), calc(-50% + ${dy * 34}px))`;
+}
+stickEl.addEventListener('pointerdown', (e) => {
+  e.preventDefault(); stickId = e.pointerId; stickRect = stickEl.getBoundingClientRect();
+  stickEl.setPointerCapture(e.pointerId); updateStick(e.clientX, e.clientY);
+});
+stickEl.addEventListener('pointermove', (e) => {
+  if (e.pointerId !== stickId) return;
+  e.preventDefault(); updateStick(e.clientX, e.clientY);
+});
+function endStick(e) {
+  if (e.pointerId !== stickId) return;
+  stickId = null; touchInput.steer = 0;
+  knobEl.style.transform = 'translate(-50%,-50%)';
+}
+stickEl.addEventListener('pointerup', endStick);
+stickEl.addEventListener('pointercancel', endStick);
+stickEl.addEventListener('pointerleave', endStick);
+function bindPedal(el, v) {
+  el.addEventListener('pointerdown', (e) => {
+    e.preventDefault(); el.classList.add('on'); touchInput.throttle = v; el.setPointerCapture(e.pointerId);
+  });
+  const off = () => { el.classList.remove('on'); if (touchInput.throttle === v) touchInput.throttle = 0; };
+  el.addEventListener('pointerup', off); el.addEventListener('pointercancel', off); el.addEventListener('pointerleave', off);
+}
+bindPedal(document.getElementById('btnGas'), 1);
+bindPedal(document.getElementById('btnBrake'), -1);
+
+/* =========================================================
+   MENU
+   ========================================================= */
+const menuEl = document.getElementById('menu');
+const hudEl = document.getElementById('hud');
+const touchEl = document.getElementById('touch');
+const kmhEl = document.getElementById('kmh');
+const muteBtnEl = document.getElementById('muteBtn');
+const weatherBtnEl = document.getElementById('weatherBtn');
+const timeBtnEl = document.getElementById('timeBtn');
+
+function updateMuteUI() {
+  if (AudioSys.muted) { muteBtnEl.textContent = '🔇 MUTED'; muteBtnEl.classList.add('muted'); }
+  else { muteBtnEl.textContent = '🔊 SOUND'; muteBtnEl.classList.remove('muted'); }
+}
+function toggleMuteUI() { AudioSys.toggleMute(); updateMuteUI(); }
+muteBtnEl.addEventListener('click', toggleMuteUI);
+
+function cycleTimeQuick() {
+  const modes = ['noon', 'dusk', 'night', 'dawn', 'auto'];
+  const i = modes.indexOf(timeMode);
+  setTimeMode(modes[(i + 1) % modes.length]);
+}
+function setTimeMode(mode) {
+  timeMode = mode;
+  if (mode === 'auto') {
+    dayCycleEnabled = true;
+  } else {
+    dayCycleEnabled = false;
+    if (mode === 'dawn') timeOfDay = 0.28;
+    else if (mode === 'noon') timeOfDay = 0.5;
+    else if (mode === 'dusk') timeOfDay = 0.72;
+    else if (mode === 'night') timeOfDay = 0.0;
+  }
+  timeBtnEl.textContent = '⏱ ' + mode.toUpperCase();
+  document.querySelectorAll('#timeSeg button').forEach(b => {
+    b.classList.toggle('on', b.dataset.t === mode);
+  });
+}
+timeBtnEl.addEventListener('click', cycleTimeQuick);
+document.querySelectorAll('#timeSeg button').forEach(b => {
+  b.addEventListener('click', () => setTimeMode(b.dataset.t));
+});
+
+function setWeather(w) {
+  weather = w;
+  applyWeather();
+  weatherBtnEl.textContent = (w === 'clear' ? '☀' : w === 'rain' ? '🌧' : w === 'snow' ? '❄' : '🌫') + ' ' + WEATHER[w].name.toUpperCase();
+  document.querySelectorAll('#weatherSeg button').forEach(b => b.classList.toggle('on', b.dataset.w === w));
+}
+weatherBtnEl.addEventListener('click', () => {
+  const order = ['clear', 'rain', 'snow', 'fog'];
+  setWeather(order[(order.indexOf(weather) + 1) % order.length]);
+});
+document.querySelectorAll('#weatherSeg button').forEach(b => {
+  b.addEventListener('click', () => setWeather(b.dataset.w));
+});
+
+function setQuality(q) {
+  quality = q;
+  applyQuality();
+  document.querySelectorAll('#qualitySeg button').forEach(b => b.classList.toggle('on', b.dataset.q === q));
+  rebuildWorld();
+  if (car) resetCar();
+}
+document.querySelectorAll('#qualitySeg button').forEach(b => {
+  b.addEventListener('click', () => setQuality(b.dataset.q));
+});
+
+function setBiome(key) {
+  if (!BIOMES[key]) return;
+  currentBiomeKey = key;
+  currentBiome = BIOMES[key];
+  refreshBiomeMeta(currentBiome);
+  rebuildWorld();
+  if (car) resetCar();
+  document.getElementById('bname').textContent = currentBiome.name;
+  document.querySelectorAll('#mapCards .card').forEach(c => c.classList.toggle('sel', c.dataset.id === key));
+}
+
+function buildMenu() {
+  const mapCardsEl = document.getElementById('mapCards');
+  mapCardsEl.innerHTML = '';
+  for (const key in BIOMES) {
+    const b = BIOMES[key];
+    const card = document.createElement('div');
+    card.className = 'card' + (b.id === currentBiomeKey ? ' sel' : '');
+    card.dataset.id = b.id;
+    const c1 = '#' + new THREE.Color(b.colors.grassA).getHexString();
+    const c2 = '#' + new THREE.Color(b.colors.grassB).getHexString();
+    card.innerHTML = `
+      <div class="swatch" style="--c1:${c1};--c2:${c2}"></div>
+      ${b.__custom ? '<span class="badge">CUSTOM</span>' : ''}
+      <h3>${b.name}</h3>
+      <p>Trees: ${b.treeCount}${b.mesa ? ' · Mesa' : ''}${b.wfAngles && b.wfAngles.length ? ' · Falls' : ''}</p>
+    `;
+    card.addEventListener('click', () => setBiome(b.id));
+    mapCardsEl.appendChild(card);
+  }
+
+  const vCardsEl = document.getElementById('vehicleCards');
+  vCardsEl.innerHTML = '';
+  VEHICLES.forEach(spec => {
+    const card = document.createElement('div');
+    card.className = 'card' + (spec.id === selectedVehicleId ? ' sel' : '');
+    card.dataset.id = spec.id;
+    let barsHTML = '';
+    for (const [k, v] of Object.entries(spec.bars)) {
+      barsHTML += `<div class="stat"><span>${k}</span><div class="bar"><i style="width:${Math.round(v * 100)}%"></i></div></div>`;
+    }
+    card.innerHTML = `
+      ${spec.__custom ? '<span class="badge">CUSTOM</span>' : ''}
+      ${getPreview(spec) ? `<img src="${getPreview(spec)}" alt="">` : ''}
+      <h3>${spec.name}</h3>
+      <p>${spec.desc || ''}</p>
+      ${barsHTML}
+    `;
+    card.addEventListener('click', () => {
+      selectedVehicleId = spec.id;
+      [...vCardsEl.children].forEach(c => c.classList.toggle('sel', c.dataset.id === spec.id));
+    });
+    vCardsEl.appendChild(card);
+  });
+}
+
+function startGame() {
+  AudioSys.init();
+  AudioSys.resume();
+  AudioSys.setCarActive(true);
+
+  const spec = VEHICLES.find(v => v.id === selectedVehicleId) || VEHICLES[0];
+  spawnCar(spec);
+  state = 'playing';
+  menuEl.classList.add('hidden');
+  hudEl.classList.add('show');
+  if (matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window) touchEl.classList.add('show');
+}
+
+function openMenu() {
+  if (state === 'photo') exitPhoto();
+  state = 'menu';
+  AudioSys.setCarActive(false);
+  menuEl.classList.remove('hidden');
+  hudEl.classList.remove('show');
+  touchEl.classList.remove('show');
+}
+
+document.getElementById('startBtn').addEventListener('click', startGame);
+document.getElementById('resetBtn').addEventListener('click', resetCar);
+document.getElementById('menuBtn').addEventListener('click', openMenu);
+document.getElementById('photoBtn').addEventListener('click', enterPhoto);
+
+/* =========================================================
+   IMPORT MODAL WIRING
+   ========================================================= */
+const vModal = document.getElementById('vehicleImportModal');
+const vBuilder = document.getElementById('builderInput');
+const vVehicle = document.getElementById('vehicleInput');
+const vStatus = document.getElementById('vStatus');
+
+const V_EXAMPLE_BUILDER = `function sandRail(g, paint) {
+  g.add(box(1.6, 0.4, 3.2, paint, 0, 0.7, 0));
+  g.add(box(1.2, 0.35, 1.2, paint, 0, 1.05, 0.9));
+  g.add(box(0.9, 0.45, 1.0, MAT.dark, 0, 1.05, -0.6));
+  g.add(box(0.08, 0.9, 0.08, MAT.chrome, -0.65, 1.4, 0.5));
+  g.add(box(0.08, 0.9, 0.08, MAT.chrome,  0.65, 1.4, 0.5));
+  g.add(box(0.08, 0.9, 0.08, MAT.chrome, -0.65, 1.4, -0.9));
+  g.add(box(0.08, 0.9, 0.08, MAT.chrome,  0.65, 1.4, -0.9));
+  g.add(box(1.4, 0.08, 0.08, MAT.chrome, 0, 1.85, 0.5));
+  g.add(box(0.25, 0.18, 0.08, MAT.light, -0.45, 0.95, 1.65));
+  g.add(box(0.25, 0.18, 0.08, MAT.light,  0.45, 0.95, 1.65));
+}`;
+const V_EXAMPLE_VEHICLE = `{
+  id: 'sandrail', name: 'Sand Rail', color: 0xffd23f,
+  desc: 'Lightweight dune runner.',
+  wheelRadius: 0.55, wheelWidth: 0.42, wheelBase: 2.6, track: 1.75,
+  maxSpeed: 42, accel: 24, brake: 30, revMax: 12, grip: 6.2, steerMax: 0.68,
+  bars: { Speed: 0.85, Accel: 0.88, Grip: 0.5, Handling: 0.85 }
+}`;
+
+document.getElementById('importVehicleBtn').addEventListener('click', () => {
+  vModal.classList.remove('hidden'); vStatus.textContent = ''; vStatus.className = '';
+});
+document.getElementById('vCancelBtn').addEventListener('click', () => vModal.classList.add('hidden'));
+document.getElementById('vExampleBtn').addEventListener('click', () => {
+  vBuilder.value = V_EXAMPLE_BUILDER; vVehicle.value = V_EXAMPLE_VEHICLE;
+  vStatus.textContent = 'Example loaded.'; vStatus.className = 'ok';
+});
+document.getElementById('vImportBtn').addEventListener('click', () => {
+  try {
+    const obj = addCustomVehicle(vBuilder.value, vVehicle.value);
+    vStatus.textContent = `✔ Imported "${obj.name}".`;
+    vStatus.className = 'ok';
+    selectedVehicleId = obj.id;
+    buildMenu();
+    setTimeout(() => vModal.classList.add('hidden'), 700);
+  } catch (err) {
+    vStatus.textContent = '✖ ' + (err && err.message ? err.message : String(err));
+    vStatus.className = 'err';
+    console.error(err);
+  }
+});
+document.getElementById('clearVehiclesBtn').addEventListener('click', () => {
+  const n = VEHICLES.filter(v => v.__custom).length;
+  if (!n) return alert('No custom vehicles.');
+  if (!confirm(`Remove ${n} custom vehicle(s)?`)) return;
+  clearCustomVehicles();
+  buildMenu();
+});
+
+/* Map Import Modal */
+const mModal = document.getElementById('mapImportModal');
+const mHeight = document.getElementById('heightInput');
+const mConfig = document.getElementById('configInput');
+const mStatus = document.getElementById('mapStatus');
+
+const M_EXAMPLE_HEIGHT = `function heightAt(x, z) {
+  let h = (fbm(x * 0.0015 + 13.7, z * 0.0015 + 91.3, 4) - 0.5) * 40;
+  h += (fbm(x * 0.006 + 51.1, z * 0.006 + 27.9, 3) - 0.5) * 10;
+  const edgeFactor = Math.max(0, (Math.abs(x) + Math.abs(z) - 400) / 400);
+  if (edgeFactor > 0) {
+    const mountain = Math.abs(fbm(x * 0.003 + 11, z * 0.003 + 22, 4) - 0.5) * 400;
+    h += mountain * Math.min(1, edgeFactor) * Math.min(1, edgeFactor);
+  }
+  const riverPathX = Math.sin(z * 0.005) * 200 + Math.cos(z * 0.002) * 100;
+  const distToRiver = Math.abs(x - riverPathX);
+  if (distToRiver < 50) {
+    const t = distToRiver / 50;
+    h -= 25 * (1 - t * t);
+  }
+  return h;
+}`;
+const M_EXAMPLE_CONFIG = `{
+  id: 'lowpoly_valley', name: 'Lowpoly Valley',
+  colors: { grassA: 0x5cb83e, grassB: 0x3e9928, dry: 0x8aa63a, rock: 0x9d8b7a, dark: 0x2a5a3a },
+  sky: { top: 0x4a90e2, bottom: 0x87ceeb },
+  fog: { color: 0x87ceeb, near: 300, far: 1200 },
+  sun: { color: 0xffffff, intensity: 2.5 },
+  hemi: { sky: 0x4a90e2, ground: 0x3e9928, intensity: 0.8 },
+  water: 0x1e90ff, roadColor: '#8b7355',
+  treeCount: 2500,
+  mesa: null, wfAngles: [],
+  treeStyle: 'lowpoly',
+  spawn: { x: -150, z: -150 }
+}`;
+
+document.getElementById('importMapBtn').addEventListener('click', () => {
+  mModal.classList.remove('hidden'); mStatus.textContent = ''; mStatus.className = '';
+});
+document.getElementById('mapCancelBtn').addEventListener('click', () => mModal.classList.add('hidden'));
+document.getElementById('mapExampleBtn').addEventListener('click', () => {
+  mHeight.value = M_EXAMPLE_HEIGHT; mConfig.value = M_EXAMPLE_CONFIG;
+  mStatus.textContent = 'Example loaded.'; mStatus.className = 'ok';
+});
+document.getElementById('mapImportBtn').addEventListener('click', () => {
+  try {
+    const b = addCustomMap(mHeight.value, mConfig.value);
+    mStatus.textContent = `✔ Imported "${b.name}".`;
+    mStatus.className = 'ok';
+    currentBiomeKey = b.id; currentBiome = b; refreshBiomeMeta(b);
+    rebuildWorld(); if (car) resetCar();
+    buildMenu();
+    setTimeout(() => mModal.classList.add('hidden'), 700);
+  } catch (err) {
+    mStatus.textContent = '✖ ' + (err && err.message ? err.message : String(err));
+    mStatus.className = 'err';
+    console.error(err);
+  }
+});
+document.getElementById('clearMapsBtn').addEventListener('click', () => {
+  const n = Object.values(BIOMES).filter(b => b.__custom).length;
+  if (!n) return alert('No custom maps.');
+  if (!confirm(`Remove ${n} custom map(s)?`)) return;
+  clearCustomMaps();
+  buildMenu();
+});
+
+/* =========================================================
+   BOOT + MAIN LOOP
+   ========================================================= */
+loadCustomVehicles();
+loadCustomMaps();
+
+if (!BIOMES[currentBiomeKey]) currentBiomeKey = 'lowpoly_valley';
+currentBiome = BIOMES[currentBiomeKey];
+refreshBiomeMeta(currentBiome);
+
+applyQuality();
+rebuildWorld();
+applyWeather();
+setTimeMode('noon');
+setWeather('clear');
+
+buildMenu();
+updateMuteUI();
+
+let lastT = performance.now();
+
+function animate(now) {
+  const dt = Math.min(0.05, Math.max(0.0005, (now - lastT) / 1000));
+  lastT = now;
+
+  updateDayNight(dt);
+  updateWeatherParticles(dt);
+
+  for (const wf of waterfalls) {
+    const p = wf.pts.geometry.attributes.position.array;
+    for (let i = 0; i < wf.mv.length; i++) {
+      const m = wf.mv[i];
+      m.life -= dt;
+      if (m.life <= 0) { m.life = 0.8 + Math.random(); p[i * 3 + 1] = wf.base + 0.2; }
+      p[i * 3 + 1] += m.vy * dt;
+    }
+    wf.pts.geometry.attributes.position.needsUpdate = true;
+  }
+
+  if (state === 'menu') {
+    const t = now * 0.00006;
+    const r = 420;
+    const mx = currentBiome.mesa ? currentBiome.mesa.x : 0;
+    const mz = currentBiome.mesa ? currentBiome.mesa.z : 0;
+    const mt = currentBiome.mesa ? currentBiome.mesa._top : 60;
+    camera.position.set(mx + Math.cos(t) * r, mt + 120, mz + Math.sin(t) * r);
+    const gy = terrainHeight(camera.position.x, camera.position.z) + 30;
+    if (camera.position.y < gy) camera.position.y = gy;
+    camera.lookAt(mx, mt * 0.85, mz);
+    camera.fov = 62;
+    camera.updateProjectionMatrix();
+    sky.position.copy(camera.position);
+  } else if (state === 'photo') {
+    updatePhotoCamera();
+  } else {
+    const kb = readKeyboard();
+    const targetSteer = Math.max(-1, Math.min(1, kb.st + touchInput.steer));
+    rawSteer += (targetSteer - rawSteer) * Math.min(1, dt * 9);
+    input.steer = rawSteer;
+    input.throttle = Math.max(-1, Math.min(1, kb.thr + touchInput.throttle));
+    input.handbrake = kb.hb;
+
+    updateCar(dt);
+    updateCamera(dt);
+    updateDust(dt);
+
+    if (car) {
+      kmhEl.textContent = Math.round(car.speed * 3.6);
+      const speedKmh = car.speed * 3.6;
+      const maxKmh = car.spec.maxSpeed * 3.6;
+      AudioSys.updateEngine(speedKmh, maxKmh, input.throttle);
+      const offRoad = distToRoad(car.pos.x, car.pos.z) > 6;
+      AudioSys.updateRumble(Math.min(1, car.speed / car.spec.maxSpeed), offRoad);
+      let wprox = 0;
+      for (const wf of waterfalls) {
+        const d = Math.hypot(car.pos.x - wf.bx, car.pos.z - wf.bz);
+        const p = Math.max(0, 1 - d / 60);
+        if (p > wprox) wprox = p;
+      }
+      AudioSys.updateWaterfall(wprox);
+    }
+  }
+
+  renderer.render(scene, camera);
+}
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+renderer.setAnimationLoop(animate);
+</script>
+</body>
+</html>
